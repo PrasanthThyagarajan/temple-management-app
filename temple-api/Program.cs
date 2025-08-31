@@ -4,6 +4,9 @@ using TempleApi.Data;
 using TempleApi.Services;
 using TempleApi.Services.Interfaces;
 using TempleApi.Models.DTOs;
+using TempleApi.Configuration;
+using TempleApi.Enums;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +18,64 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services to the container
-builder.Services.AddDbContext<TempleDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// Configure database settings
+var databaseSettings = builder.Configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>();
+builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(DatabaseSettings.SectionName));
+
+// Register database context factory
+builder.Services.AddScoped<IDbContextFactory, DbContextFactory>();
+
+// Configure database context based on provider
+var provider = Enum.Parse<DatabaseProvider>(databaseSettings?.Provider ?? "PostgreSQL");
+var connectionString = databaseSettings?.ConnectionString ?? 
+    builder.Configuration.GetConnectionString(provider.ToString()) ??
+    builder.Configuration.GetConnectionString("PostgreSQL");
+
+switch (provider)
+{
+    case DatabaseProvider.PostgreSQL:
+        builder.Services.AddDbContext<TempleDbContext>(options =>
+            options.UseNpgsql(connectionString, npgsqlOptions =>
+            {
+                npgsqlOptions.CommandTimeout(databaseSettings?.CommandTimeout ?? 30);
+                npgsqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorCodesToAdd: null);
+            }));
+        break;
+
+    case DatabaseProvider.SQLite:
+        builder.Services.AddDbContext<TempleDbContext>(options =>
+            options.UseSqlite(connectionString, sqliteOptions =>
+            {
+                sqliteOptions.CommandTimeout(databaseSettings?.CommandTimeout ?? 30);
+            }));
+        break;
+
+    case DatabaseProvider.SQLServer:
+        builder.Services.AddDbContext<TempleDbContext>(options =>
+            options.UseSqlServer(connectionString, sqlServerOptions =>
+            {
+                sqlServerOptions.CommandTimeout(databaseSettings?.CommandTimeout ?? 30);
+                sqlServerOptions.EnableRetryOnFailure(
+                    maxRetryCount: 3,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+            }));
+        break;
+
+    case DatabaseProvider.MySQL:
+        builder.Services.AddDbContext<TempleDbContext>(options =>
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mySqlOptions =>
+            {
+                mySqlOptions.CommandTimeout(databaseSettings?.CommandTimeout ?? 30);
+            }));
+        break;
+
+    default:
+        throw new ArgumentException($"Unsupported database provider: {provider}");
+}
 
 // Register services
 builder.Services.AddScoped<ITempleService, TempleService>();
@@ -51,6 +109,34 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AllowVueApp");
+
+// Database initialization
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<TempleDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        if (databaseSettings?.EnableMigrations == true)
+        {
+            logger.LogInformation("Applying database migrations for provider: {Provider}", provider);
+            context.Database.Migrate();
+            logger.LogInformation("Database migrations applied successfully");
+        }
+        else
+        {
+            logger.LogInformation("Ensuring database exists for provider: {Provider}", provider);
+            context.Database.EnsureCreated();
+            logger.LogInformation("Database ensured successfully");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred while initializing the database");
+        throw;
+    }
+}
 
 // Temple endpoints
 app.MapGet("/api/temples", async (ITempleService templeService) =>
@@ -531,5 +617,18 @@ app.MapGet("/api/events/search/{searchTerm}", async (string searchTerm, IEventSe
 
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
+
+// Database info endpoint
+app.MapGet("/api/database/info", (IOptions<DatabaseSettings> dbSettings) =>
+{
+    var settings = dbSettings.Value;
+    return Results.Ok(new
+    {
+        provider = settings.Provider,
+        connectionString = settings.ConnectionString.Substring(0, Math.Min(50, settings.ConnectionString.Length)) + "...",
+        enableMigrations = settings.EnableMigrations,
+        commandTimeout = settings.CommandTimeout
+    });
+});
 
 app.Run();

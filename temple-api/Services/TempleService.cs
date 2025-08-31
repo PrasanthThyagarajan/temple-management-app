@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services.Interfaces;
 
@@ -37,15 +37,14 @@ namespace TempleApi.Services
             var temple = new Temple
             {
                 Name = createDto.Name,
-                Description = createDto.Description,
+                Description = createDto.Description ?? string.Empty,
                 Address = createDto.Address,
-                City = createDto.City,
-                State = createDto.State,
-                PhoneNumber = createDto.PhoneNumber,
-                Email = createDto.Email,
-                Website = createDto.Website,
-                Deity = createDto.Deity,
-                TempleType = createDto.TempleType,
+                City = createDto.City ?? string.Empty,
+                State = createDto.State ?? string.Empty,
+                Phone = createDto.PhoneNumber ?? string.Empty,
+                Email = createDto.Email ?? string.Empty,
+                Deity = createDto.Deity ?? string.Empty,
+                EstablishedDate = createDto.EstablishedDate ?? DateTime.UtcNow,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
             };
@@ -63,15 +62,13 @@ namespace TempleApi.Services
                 return null;
 
             temple.Name = updateDto.Name;
-            temple.Description = updateDto.Description;
+            temple.Description = updateDto.Description ?? string.Empty;
             temple.Address = updateDto.Address;
-            temple.City = updateDto.City;
-            temple.State = updateDto.State;
-            temple.PhoneNumber = updateDto.PhoneNumber;
-            temple.Email = updateDto.Email;
-            temple.Website = updateDto.Website;
-            temple.Deity = updateDto.Deity;
-            temple.TempleType = updateDto.TempleType;
+            temple.City = updateDto.City ?? string.Empty;
+            temple.State = updateDto.State ?? string.Empty;
+            temple.Phone = updateDto.PhoneNumber ?? string.Empty;
+            temple.Email = updateDto.Email ?? string.Empty;
+            temple.Deity = updateDto.Deity ?? string.Empty;
             temple.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -98,24 +95,28 @@ namespace TempleApi.Services
 
             var normalizedSearchTerm = searchTerm.ToLower();
             return await _context.Temples
-                .Where(t => t.IsActive && 
-                           (t.Name.ToLower().Contains(normalizedSearchTerm) ||
-                            t.Description != null && t.Description.ToLower().Contains(normalizedSearchTerm) ||
-                            t.City != null && t.City.ToLower().Contains(normalizedSearchTerm) ||
-                            t.State != null && t.State.ToLower().Contains(normalizedSearchTerm) ||
-                            t.Deity != null && t.Deity.ToLower().Contains(normalizedSearchTerm)))
+                .Where(t => t.IsActive && (
+                    t.Name.ToLower().Contains(normalizedSearchTerm) ||
+                    t.City.ToLower().Contains(normalizedSearchTerm) ||
+                    t.State.ToLower().Contains(normalizedSearchTerm) ||
+                    t.Deity.ToLower().Contains(normalizedSearchTerm)
+                ))
                 .OrderBy(t => t.Name)
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Temple>> GetTemplesByLocationAsync(string city, string? state)
+        public async Task<IEnumerable<Temple>> GetTemplesByLocationAsync(string city, string? state = null)
         {
-            var query = _context.Temples.Where(t => t.IsActive && t.City == city);
+            var query = _context.Temples.Where(t => t.IsActive && t.City.ToLower() == city.ToLower());
             
-            if (!string.IsNullOrEmpty(state))
-                query = query.Where(t => t.State == state);
+            if (!string.IsNullOrWhiteSpace(state))
+            {
+                query = query.Where(t => t.State.ToLower() == state.ToLower());
+            }
 
-            return await query.OrderBy(t => t.Name).ToListAsync();
+            return await query
+                .OrderBy(t => t.Name)
+                .ToListAsync();
         }
     }
 }

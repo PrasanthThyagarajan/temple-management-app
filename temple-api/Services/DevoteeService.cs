@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services.Interfaces;
 
@@ -29,8 +29,8 @@ namespace TempleApi.Services
         {
             return await _context.Devotees
                 .Include(d => d.Temple)
-                .Include(d => d.Donations.Where(don => don.Status == "Completed"))
-                .Include(d => d.EventRegistrations.Where(er => er.Status == "Confirmed"))
+                .Include(d => d.Donations.Where(don => don.IsActive))
+                .Include(d => d.EventRegistrations.Where(er => er.IsActive))
                 .FirstOrDefaultAsync(d => d.Id == id && d.IsActive);
         }
 
@@ -49,13 +49,14 @@ namespace TempleApi.Services
             {
                 FirstName = createDto.FirstName,
                 LastName = createDto.LastName,
-                Email = createDto.Email,
-                PhoneNumber = createDto.PhoneNumber,
-                Address = createDto.Address,
-                City = createDto.City,
-                State = createDto.State,
+                Email = createDto.Email ?? string.Empty,
+                Phone = createDto.Phone ?? string.Empty,
+                Address = createDto.Address ?? string.Empty,
+                City = createDto.City ?? string.Empty,
+                State = createDto.State ?? string.Empty,
+                PostalCode = createDto.PostalCode ?? string.Empty,
                 DateOfBirth = createDto.DateOfBirth,
-                Gender = createDto.Gender,
+                Gender = createDto.Gender ?? string.Empty,
                 TempleId = createDto.TempleId,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
@@ -75,14 +76,14 @@ namespace TempleApi.Services
 
             devotee.FirstName = updateDto.FirstName;
             devotee.LastName = updateDto.LastName;
-            devotee.Email = updateDto.Email;
-            devotee.PhoneNumber = updateDto.PhoneNumber;
-            devotee.Address = updateDto.Address;
-            devotee.City = updateDto.City;
-            devotee.State = updateDto.State;
+            devotee.Email = updateDto.Email ?? string.Empty;
+            devotee.Phone = updateDto.Phone ?? string.Empty;
+            devotee.Address = updateDto.Address ?? string.Empty;
+            devotee.City = updateDto.City ?? string.Empty;
+            devotee.State = updateDto.State ?? string.Empty;
+            devotee.PostalCode = updateDto.PostalCode ?? string.Empty;
             devotee.DateOfBirth = updateDto.DateOfBirth;
-            devotee.Gender = updateDto.Gender;
-            devotee.TempleId = updateDto.TempleId;
+            devotee.Gender = updateDto.Gender ?? string.Empty;
             devotee.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -110,11 +111,14 @@ namespace TempleApi.Services
             var normalizedSearchTerm = searchTerm.ToLower();
             return await _context.Devotees
                 .Include(d => d.Temple)
-                .Where(d => d.IsActive && 
-                           (d.FirstName.ToLower().Contains(normalizedSearchTerm) ||
-                            d.LastName.ToLower().Contains(normalizedSearchTerm) ||
-                            d.Email != null && d.Email.ToLower().Contains(normalizedSearchTerm) ||
-                            d.PhoneNumber != null && d.PhoneNumber.Contains(normalizedSearchTerm)))
+                .Where(d => d.IsActive && (
+                    d.FirstName.ToLower().Contains(normalizedSearchTerm) ||
+                    d.LastName.ToLower().Contains(normalizedSearchTerm) ||
+                    d.Email.ToLower().Contains(normalizedSearchTerm) ||
+                    d.Phone.ToLower().Contains(normalizedSearchTerm) ||
+                    d.City.ToLower().Contains(normalizedSearchTerm) ||
+                    d.State.ToLower().Contains(normalizedSearchTerm)
+                ))
                 .OrderBy(d => d.FirstName)
                 .ThenBy(d => d.LastName)
                 .ToListAsync();

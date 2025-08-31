@@ -12,12 +12,11 @@ namespace TempleApi.Models.DTOs
         [StringLength(100)]
         public string LastName { get; set; } = string.Empty;
         
-        [StringLength(100)]
-        [EmailAddress]
+        [StringLength(200)]
         public string? Email { get; set; }
         
         [StringLength(20)]
-        public string? PhoneNumber { get; set; }
+        public string? Phone { get; set; }
         
         [StringLength(200)]
         public string? Address { get; set; }
@@ -28,9 +27,12 @@ namespace TempleApi.Models.DTOs
         [StringLength(100)]
         public string? State { get; set; }
         
+        [StringLength(10)]
+        public string? PostalCode { get; set; }
+        
         public DateTime? DateOfBirth { get; set; }
         
-        [StringLength(50)]
+        [StringLength(10)]
         public string? Gender { get; set; }
         
         [Required]

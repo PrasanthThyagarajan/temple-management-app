@@ -1,4 +1,4 @@
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 
 namespace TempleApi.Services.Interfaces

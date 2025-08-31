@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services.Interfaces;
 
@@ -58,14 +58,13 @@ namespace TempleApi.Services
             {
                 TempleId = createDto.TempleId,
                 Name = createDto.Name,
-                Description = createDto.Description,
+                Description = createDto.Description ?? string.Empty,
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
-                Location = createDto.Location,
+                Location = createDto.Location ?? string.Empty,
                 EventType = createDto.EventType,
-                SpecialInstructions = createDto.SpecialInstructions,
                 MaxAttendees = createDto.MaxAttendees,
-                RegistrationFee = createDto.RegistrationFee,
+                EntryFee = createDto.RegistrationFee,
                 Status = "Scheduled",
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
@@ -84,31 +83,17 @@ namespace TempleApi.Services
                 return null;
 
             eventEntity.Name = updateDto.Name;
-            eventEntity.Description = updateDto.Description;
+            eventEntity.Description = updateDto.Description ?? string.Empty;
             eventEntity.StartDate = updateDto.StartDate;
             eventEntity.EndDate = updateDto.EndDate;
-            eventEntity.Location = updateDto.Location;
+            eventEntity.Location = updateDto.Location ?? string.Empty;
             eventEntity.EventType = updateDto.EventType;
-            eventEntity.SpecialInstructions = updateDto.SpecialInstructions;
             eventEntity.MaxAttendees = updateDto.MaxAttendees;
-            eventEntity.RegistrationFee = updateDto.RegistrationFee;
+            eventEntity.EntryFee = updateDto.RegistrationFee;
             eventEntity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
             return eventEntity;
-        }
-
-        public async Task<bool> DeleteEventAsync(int id)
-        {
-            var eventEntity = await _context.Events.FindAsync(id);
-            if (eventEntity == null || !eventEntity.IsActive)
-                return false;
-
-            eventEntity.IsActive = false;
-            eventEntity.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return true;
         }
 
         public async Task<bool> UpdateEventStatusAsync(int id, string status)
@@ -124,6 +109,19 @@ namespace TempleApi.Services
             return true;
         }
 
+        public async Task<bool> DeleteEventAsync(int id)
+        {
+            var eventEntity = await _context.Events.FindAsync(id);
+            if (eventEntity == null || !eventEntity.IsActive)
+                return false;
+
+            eventEntity.IsActive = false;
+            eventEntity.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         public async Task<IEnumerable<Event>> SearchEventsAsync(string searchTerm)
         {
             if (string.IsNullOrWhiteSpace(searchTerm))
@@ -132,10 +130,12 @@ namespace TempleApi.Services
             var normalizedSearchTerm = searchTerm.ToLower();
             return await _context.Events
                 .Include(e => e.Temple)
-                .Where(e => e.IsActive && 
-                           (e.Name.ToLower().Contains(normalizedSearchTerm) ||
-                            e.Description != null && e.Description.ToLower().Contains(normalizedSearchTerm) ||
-                            e.EventType.ToLower().Contains(normalizedSearchTerm)))
+                .Where(e => e.IsActive && (
+                    e.Name.ToLower().Contains(normalizedSearchTerm) ||
+                    e.Description.ToLower().Contains(normalizedSearchTerm) ||
+                    e.EventType.ToLower().Contains(normalizedSearchTerm) ||
+                    e.Location.ToLower().Contains(normalizedSearchTerm)
+                ))
                 .OrderBy(e => e.StartDate)
                 .ToListAsync();
         }

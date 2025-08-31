@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services.Interfaces;
 
@@ -20,6 +20,7 @@ namespace TempleApi.Services
             return await _context.Donations
                 .Include(d => d.Temple)
                 .Include(d => d.Devotee)
+                .Where(d => d.IsActive)
                 .OrderByDescending(d => d.DonationDate)
                 .ToListAsync();
         }
@@ -29,14 +30,14 @@ namespace TempleApi.Services
             return await _context.Donations
                 .Include(d => d.Temple)
                 .Include(d => d.Devotee)
-                .FirstOrDefaultAsync(d => d.Id == id);
+                .FirstOrDefaultAsync(d => d.Id == id && d.IsActive);
         }
 
         public async Task<IEnumerable<Donation>> GetDonationsByTempleAsync(int templeId)
         {
             return await _context.Donations
                 .Include(d => d.Devotee)
-                .Where(d => d.TempleId == templeId)
+                .Where(d => d.TempleId == templeId && d.IsActive)
                 .OrderByDescending(d => d.DonationDate)
                 .ToListAsync();
         }
@@ -45,7 +46,7 @@ namespace TempleApi.Services
         {
             return await _context.Donations
                 .Include(d => d.Temple)
-                .Where(d => d.DevoteeId == devoteeId)
+                .Where(d => d.DevoteeId == devoteeId && d.IsActive)
                 .OrderByDescending(d => d.DonationDate)
                 .ToListAsync();
         }
@@ -57,16 +58,15 @@ namespace TempleApi.Services
                 TempleId = createDto.TempleId,
                 DevoteeId = createDto.DevoteeId,
                 DonorName = createDto.DonorName,
-                DonorEmail = createDto.DonorEmail,
-                DonorPhone = createDto.DonorPhone,
                 Amount = createDto.Amount,
                 DonationType = createDto.DonationType,
-                Purpose = createDto.Purpose,
-                Notes = createDto.Notes,
-                PaymentMethod = createDto.PaymentMethod,
+                Purpose = createDto.Purpose ?? string.Empty,
+                Status = createDto.Status ?? "Pending",
                 DonationDate = createDto.DonationDate ?? DateTime.UtcNow,
-                Status = "Pending",
-                CreatedAt = DateTime.UtcNow
+                ReceiptNumber = createDto.ReceiptNumber ?? string.Empty,
+                Notes = createDto.Notes ?? string.Empty,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
 
             _context.Donations.Add(donation);
@@ -78,7 +78,7 @@ namespace TempleApi.Services
         public async Task<Donation?> UpdateDonationStatusAsync(int id, string status)
         {
             var donation = await _context.Donations.FindAsync(id);
-            if (donation == null)
+            if (donation == null || !donation.IsActive)
                 return null;
 
             donation.Status = status;
@@ -91,10 +91,12 @@ namespace TempleApi.Services
         public async Task<bool> DeleteDonationAsync(int id)
         {
             var donation = await _context.Donations.FindAsync(id);
-            if (donation == null)
+            if (donation == null || !donation.IsActive)
                 return false;
 
-            _context.Donations.Remove(donation);
+            donation.IsActive = false;
+            donation.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -102,7 +104,9 @@ namespace TempleApi.Services
         public async Task<decimal> GetTotalDonationsByTempleAsync(int templeId)
         {
             return await _context.Donations
-                .Where(d => d.TempleId == templeId && d.Status == "Completed")
+                .Where(d => d.TempleId == templeId && 
+                           d.IsActive && 
+                           d.Status == "Completed")
                 .SumAsync(d => d.Amount);
         }
 

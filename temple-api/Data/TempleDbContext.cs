@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 
 namespace TempleApi.Data
 {
@@ -20,25 +20,28 @@ namespace TempleApi.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            // Base entity configuration
+            modelBuilder.Entity<BaseEntity>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+            });
+
             // Temple configuration
             modelBuilder.Entity<Temple>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.Address).IsRequired().HasMaxLength(200);
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.EstablishedDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
             });
 
             // Devotee configuration
             modelBuilder.Entity<Devotee>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.TempleId).IsRequired();
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
                 
                 entity.HasOne(e => e.Temple)
                     .WithMany(e => e.Devotees)
@@ -49,14 +52,12 @@ namespace TempleApi.Data
             // Donation configuration
             modelBuilder.Entity<Donation>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.TempleId).IsRequired();
                 entity.Property(e => e.DonorName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(18,2)");
                 entity.Property(e => e.DonationType).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Status).HasDefaultValue("Pending");
                 entity.Property(e => e.DonationDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
                 entity.HasOne(e => e.Temple)
                     .WithMany(e => e.Donations)
@@ -72,15 +73,12 @@ namespace TempleApi.Data
             // Event configuration
             modelBuilder.Entity<Event>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.TempleId).IsRequired();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.StartDate).IsRequired();
                 entity.Property(e => e.EndDate).IsRequired();
                 entity.Property(e => e.EventType).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Status).HasDefaultValue("Scheduled");
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
                 
                 entity.HasOne(e => e.Temple)
                     .WithMany(e => e.Events)
@@ -91,13 +89,11 @@ namespace TempleApi.Data
             // EventRegistration configuration
             modelBuilder.Entity<EventRegistration>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.EventId).IsRequired();
                 entity.Property(e => e.DevoteeId).IsRequired();
                 entity.Property(e => e.AttendeeName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Status).HasDefaultValue("Registered");
                 entity.Property(e => e.RegistrationDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
                 entity.HasOne(e => e.Event)
                     .WithMany(e => e.Registrations)
@@ -113,20 +109,59 @@ namespace TempleApi.Data
             // Service configuration
             modelBuilder.Entity<Service>(entity =>
             {
-                entity.HasKey(e => e.Id);
                 entity.Property(e => e.TempleId).IsRequired();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.ServiceType).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Price).IsRequired().HasColumnType("decimal(18,2)");
                 entity.Property(e => e.IsAvailable).HasDefaultValue(true);
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
                 
                 entity.HasOne(e => e.Temple)
                     .WithMany(e => e.Services)
                     .HasForeignKey(e => e.TempleId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+        }
+
+        public override int SaveChanges()
+        {
+            UpdateTimestamps();
+            return base.SaveChanges();
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            UpdateTimestamps();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            UpdateTimestamps();
+            return base.SaveChangesAsync(cancellationToken);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            UpdateTimestamps();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void UpdateTimestamps()
+        {
+            var entries = ChangeTracker.Entries<BaseEntity>()
+                .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+
+            foreach (var entry in entries)
+            {
+                if (entry.State == EntityState.Added)
+                {
+                    entry.Entity.CreatedAt = DateTime.UtcNow;
+                }
+                else if (entry.State == EntityState.Modified)
+                {
+                    entry.Entity.UpdatedAt = DateTime.UtcNow;
+                }
+            }
         }
     }
 }

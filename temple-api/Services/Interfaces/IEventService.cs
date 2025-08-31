@@ -1,4 +1,4 @@
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 
 namespace TempleApi.Services.Interfaces
@@ -11,8 +11,8 @@ namespace TempleApi.Services.Interfaces
         Task<IEnumerable<Event>> GetUpcomingEventsAsync(int templeId);
         Task<Event> CreateEventAsync(CreateEventDto createDto);
         Task<Event?> UpdateEventAsync(int id, CreateEventDto updateDto);
-        Task<bool> DeleteEventAsync(int id);
         Task<bool> UpdateEventStatusAsync(int id, string status);
+        Task<bool> DeleteEventAsync(int id);
         Task<IEnumerable<Event>> SearchEventsAsync(string searchTerm);
     }
 }

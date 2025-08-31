@@ -1,4 +1,4 @@
-using TempleApi.Models;
+using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 
 namespace TempleApi.Services.Interfaces
@@ -13,6 +13,5 @@ namespace TempleApi.Services.Interfaces
         Task<Donation?> UpdateDonationStatusAsync(int id, string status);
         Task<bool> DeleteDonationAsync(int id);
         Task<decimal> GetTotalDonationsByTempleAsync(int templeId);
-        Task<decimal> GetTotalDonationsByDateRangeAsync(int templeId, DateTime startDate, DateTime endDate);
     }
 }

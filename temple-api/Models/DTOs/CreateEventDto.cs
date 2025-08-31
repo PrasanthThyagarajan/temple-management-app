@@ -27,9 +27,6 @@ namespace TempleApi.Models.DTOs
         [StringLength(100)]
         public string EventType { get; set; } = string.Empty;
         
-        [StringLength(500)]
-        public string? SpecialInstructions { get; set; }
-        
         public int? MaxAttendees { get; set; }
         
         public decimal? RegistrationFee { get; set; }

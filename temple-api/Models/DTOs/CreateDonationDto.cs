@@ -13,30 +13,26 @@ namespace TempleApi.Models.DTOs
         [StringLength(100)]
         public string DonorName { get; set; } = string.Empty;
         
-        [StringLength(100)]
-        [EmailAddress]
-        public string? DonorEmail { get; set; }
-        
-        [StringLength(20)]
-        public string? DonorPhone { get; set; }
-        
         [Required]
-        [Range(0.01, double.MaxValue, ErrorMessage = "Amount must be greater than 0")]
+        [Range(0.01, double.MaxValue)]
         public decimal Amount { get; set; }
         
         [Required]
         [StringLength(100)]
         public string DonationType { get; set; } = string.Empty;
         
-        [StringLength(200)]
+        [StringLength(500)]
         public string? Purpose { get; set; }
+        
+        [StringLength(50)]
+        public string? Status { get; set; } = "Pending";
+        
+        public DateTime? DonationDate { get; set; }
+        
+        [StringLength(200)]
+        public string? ReceiptNumber { get; set; }
         
         [StringLength(500)]
         public string? Notes { get; set; }
-        
-        [StringLength(50)]
-        public string? PaymentMethod { get; set; }
-        
-        public DateTime? DonationDate { get; set; }
     }
 }
