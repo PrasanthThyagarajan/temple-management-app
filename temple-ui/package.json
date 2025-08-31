@@ -1,0 +1,31 @@
+{
+  "name": "temple-ui",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:unit": "vitest",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4",
+    "pinia": "^2.1.6",
+    "axios": "^1.5.0",
+    "element-plus": "^2.3.8",
+    "@element-plus/icons-vue": "^2.1.0",
+    "dayjs": "^1.11.9"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.3.4",
+    "vite": "^4.4.9",
+    "eslint": "^8.49.0",
+    "eslint-plugin-vue": "^9.17.0",
+    "@vue/eslint-config-prettier": "^8.0.0",
+    "prettier": "^3.0.3",
+    "vitest": "^0.34.3",
+    "@vue/test-utils": "^2.4.1"
+  }
+}
