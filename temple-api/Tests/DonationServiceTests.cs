@@ -1,571 +1,235 @@
 using Microsoft.EntityFrameworkCore;
-using FluentAssertions;
 using TempleApi.Data;
 using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
+using FluentAssertions;
 
-namespace TempleApi.Tests;
-
-public class DonationServiceTests
+namespace TempleApi.Tests
 {
-    private readonly DbContextOptions<TempleDbContext> _options;
+	public class DonationServiceTests : IDisposable
+	{
+		private readonly TempleDbContext _context;
+		private readonly DonationService _donationService;
 
-    public DonationServiceTests()
-    {
-        _options = new DbContextOptionsBuilder<TempleDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-    }
+		public DonationServiceTests()
+		{
+			var options = new DbContextOptionsBuilder<TempleDbContext>()
+				.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+				.Options;
 
-    private TempleDbContext CreateContext()
-    {
-        return new TempleDbContext(_options);
-    }
+			_context = new TempleDbContext(options);
+			_donationService = new DonationService(_context);
+		}
 
-    [Fact]
-    public async Task GetAllDonationsAsync_ShouldReturnAllDonations()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+		#region Create Tests
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task CreateDonationAsync_ShouldCreateDonation_WithDevotee()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			var devotee = new Devotee { FirstName = "John", LastName = "Doe", TempleId = 0, IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
+			devotee.TempleId = temple.Id;
+			_context.Devotees.Add(devotee);
+			await _context.SaveChangesAsync();
 
-        var donation1 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var donation2 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "Jane Smith",
-            Amount = 250.00m,
-            DonationType = "Bank Transfer",
-            Purpose = "New Equipment",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-2),
-            ReceiptNumber = "R002",
-            Notes = "Equipment donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+			var dto = new CreateDonationDto
+			{
+				TempleId = temple.Id,
+				DevoteeId = devotee.Id,
+				DonorName = "John Doe",
+				Amount = 100,
+				DonationType = "Cash",
+				Purpose = "Maintenance",
+				DonationDate = DateTime.UtcNow
+			};
 
-        context.Donations.AddRange(donation1, donation2);
-        await context.SaveChangesAsync();
+			var result = await _donationService.CreateDonationAsync(dto);
 
-        // Act
-        var result = await service.GetAllDonationsAsync();
+			result.Should().NotBeNull();
+			result.TempleId.Should().Be(temple.Id);
+			result.DevoteeId.Should().Be(devotee.Id);
+			result.Amount.Should().Be(100);
+			result.DonationType.Should().Be("Cash");
+			result.Purpose.Should().Be("Maintenance");
+		}
 
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(d => d.DonorName == "John Doe");
-        result.Should().Contain(d => d.DonorName == "Jane Smith");
-    }
+		[Fact]
+		public async Task CreateDonationAsync_ShouldCreateDonation_Anonymous()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task GetDonationByIdAsync_WithValidId_ShouldReturnDonation()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+			var dto = new CreateDonationDto
+			{
+				TempleId = temple.Id,
+				DevoteeId = null,
+				DonorName = "Anonymous",
+				Amount = 50,
+				DonationType = "Online"
+			};
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			var result = await _donationService.CreateDonationAsync(dto);
+			result.DevoteeId.Should().BeNull();
+			result.DonorName.Should().Be("Anonymous");
+		}
 
-        var donation = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Donations.Add(donation);
-        await context.SaveChangesAsync();
+		#endregion
 
-        // Act
-        var result = await service.GetDonationByIdAsync(donation.Id);
+		#region Read Tests
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.DonorName.Should().Be("John Doe");
-        result.Amount.Should().Be(100.00m);
-        result.DonationType.Should().Be("Cash");
-    }
+		[Fact]
+		public async Task GetDonationByIdAsync_ShouldReturnDonation_WhenExists()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
+			var donation = new Donation { TempleId = temple.Id, DonorName = "D", Amount = 10, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true };
+			_context.Donations.Add(donation);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task GetDonationByIdAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+			var result = await _donationService.GetDonationByIdAsync(donation.Id);
+			result.Should().NotBeNull();
+			result!.TempleId.Should().Be(temple.Id);
+		}
 
-        // Act
-        var result = await service.GetDonationByIdAsync(999);
+		[Fact]
+		public async Task GetDonationByIdAsync_ShouldReturnNull_WhenNotFound()
+		{
+			var result = await _donationService.GetDonationByIdAsync(999);
+			result.Should().BeNull();
+		}
 
-        // Assert
-        result.Should().BeNull();
-    }
+		[Fact]
+		public async Task GetAllDonationsAsync_ShouldReturnOnlyActive()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			_context.Donations.AddRange(
+				new Donation { TempleId = t.Id, DonorName = "A", Amount = 1, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true },
+				new Donation { TempleId = t.Id, DonorName = "B", Amount = 2, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = false }
+			);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task GetDonationsByTempleAsync_WithValidTempleId_ShouldReturnDonations()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+			var result = await _donationService.GetAllDonationsAsync();
+			result.Should().HaveCount(1);
+		}
 
-        var temple1 = new Temple 
-        { 
-            Name = "Temple 1", 
-            Address = "Address 1",
-            City = "City 1",
-            State = "State 1",
-            Phone = "123-456-7890",
-            Email = "temple1@temple.com",
-            Deity = "Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Temple 2", 
-            Address = "Address 2",
-            City = "City 2",
-            State = "State 2",
-            Phone = "098-765-4321",
-            Email = "temple2@temple.com",
-            Deity = "Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.AddRange(temple1, temple2);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task GetDonationsByTempleAsync_ShouldFilterByTemple()
+		{
+			var t1 = new Temple { Name = "T1", Address = "A1", City = "C1", State = "S1", IsActive = true };
+			var t2 = new Temple { Name = "T2", Address = "A2", City = "C2", State = "S2", IsActive = true };
+			_context.Temples.AddRange(t1, t2);
+			await _context.SaveChangesAsync();
+			_context.Donations.AddRange(
+				new Donation { TempleId = t1.Id, DonorName = "A", Amount = 1, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true },
+				new Donation { TempleId = t2.Id, DonorName = "B", Amount = 1, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        var donation1 = new Donation 
-        { 
-            TempleId = temple1.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var donation2 = new Donation 
-        { 
-            TempleId = temple2.Id,
-            DonorName = "Jane Smith",
-            Amount = 250.00m,
-            DonationType = "Bank Transfer",
-            Purpose = "New Equipment",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-2),
-            ReceiptNumber = "R002",
-            Notes = "Equipment donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+			var result = await _donationService.GetDonationsByTempleAsync(t1.Id);
+			result.Should().HaveCount(1);
+		}
 
-        context.Donations.AddRange(donation1, donation2);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task GetDonationsByDevoteeAsync_ShouldFilterByDevotee()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			var d1 = new Devotee { FirstName = "A", LastName = "A", TempleId = t.Id, IsActive = true };
+			var d2 = new Devotee { FirstName = "B", LastName = "B", TempleId = t.Id, IsActive = true };
+			_context.Devotees.AddRange(d1, d2);
+			await _context.SaveChangesAsync();
+			_context.Donations.AddRange(
+				new Donation { TempleId = t.Id, DevoteeId = d1.Id, DonorName = "A", Amount = 1, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true },
+				new Donation { TempleId = t.Id, DevoteeId = d2.Id, DonorName = "B", Amount = 1, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.GetDonationsByTempleAsync(temple1.Id);
+			var result = await _donationService.GetDonationsByDevoteeAsync(d1.Id);
+			result.Should().HaveCount(1);
+		}
 
-        // Assert
-        result.Should().HaveCount(1);
-        result.First().TempleId.Should().Be(temple1.Id);
-    }
+		#endregion
 
-    [Fact]
-    public async Task GetDonationsByDevoteeAsync_WithValidDevoteeId_ShouldReturnDonations()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+		#region Update/Delete/Aggregations
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task UpdateDonationStatusAsync_ShouldUpdateStatus_WhenExists()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			var donation = new Donation { TempleId = t.Id, DonorName = "D", Amount = 10, DonationType = "Cash", DonationDate = DateTime.UtcNow, Status = "Pending", IsActive = true };
+			_context.Donations.Add(donation);
+			await _context.SaveChangesAsync();
 
-        var devotee = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Devotees.Add(devotee);
-        await context.SaveChangesAsync();
+			var updated = await _donationService.UpdateDonationStatusAsync(donation.Id, "Completed");
+			updated!.Status.Should().Be("Completed");
+		}
 
-        var donation1 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DevoteeId = devotee.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var donation2 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DevoteeId = devotee.Id,
-            DonorName = "John Doe",
-            Amount = 250.00m,
-            DonationType = "Bank Transfer",
-            Purpose = "New Equipment",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-2),
-            ReceiptNumber = "R002",
-            Notes = "Equipment donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+		[Fact]
+		public async Task DeleteDonationAsync_ShouldSoftDelete_WhenExists()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			var donation = new Donation { TempleId = t.Id, DonorName = "D", Amount = 10, DonationType = "Cash", DonationDate = DateTime.UtcNow, IsActive = true };
+			_context.Donations.Add(donation);
+			await _context.SaveChangesAsync();
 
-        context.Donations.AddRange(donation1, donation2);
-        await context.SaveChangesAsync();
+			var ok = await _donationService.DeleteDonationAsync(donation.Id);
+			ok.Should().BeTrue();
+			var stored = await _context.Donations.FindAsync(donation.Id);
+			stored!.IsActive.Should().BeFalse();
+		}
 
-        // Act
-        var result = await service.GetDonationsByDevoteeAsync(devotee.Id);
+		[Fact]
+		public async Task GetTotalDonationsByTempleAsync_ShouldSumCompleted()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			_context.Donations.AddRange(
+				new Donation { TempleId = t.Id, DonorName = "A", Amount = 10, DonationType = "Cash", DonationDate = DateTime.UtcNow, Status = "Completed", IsActive = true },
+				new Donation { TempleId = t.Id, DonorName = "B", Amount = 5, DonationType = "Cash", DonationDate = DateTime.UtcNow, Status = "Pending", IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().OnlyContain(d => d.DevoteeId == devotee.Id);
-    }
+			var sum = await _donationService.GetTotalDonationsByTempleAsync(t.Id);
+			sum.Should().Be(10);
+		}
 
-    [Fact]
-    public async Task CreateDonationAsync_WithValidDto_ShouldCreateDonation()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
+		[Fact]
+		public async Task GetTotalDonationsByDateRangeAsync_ShouldSumWithinRange()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			var start = DateTime.UtcNow.AddDays(-5);
+			var end = DateTime.UtcNow.AddDays(1);
+			_context.Donations.AddRange(
+				new Donation { TempleId = t.Id, DonorName = "A", Amount = 10, DonationType = "Cash", DonationDate = DateTime.UtcNow.AddDays(-2), Status = "Completed", IsActive = true },
+				new Donation { TempleId = t.Id, DonorName = "B", Amount = 5, DonationType = "Cash", DonationDate = DateTime.UtcNow.AddDays(-10), Status = "Completed", IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			var sum = await _donationService.GetTotalDonationsByDateRangeAsync(t.Id, start, end);
+			sum.Should().Be(10);
+		}
 
-        var createDto = new CreateDonationDto
-        {
-            TempleId = temple.Id,
-            DonorName = "New Donor",
-            Amount = 500.00m,
-            DonationType = "Check",
-            Purpose = "Building Fund",
-            Status = "Pending",
-            DonationDate = DateTime.UtcNow,
-            ReceiptNumber = "R003",
-            Notes = "Building fund donation"
-        };
+		#endregion
 
-        // Act
-        var result = await service.CreateDonationAsync(createDto);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.TempleId.Should().Be(temple.Id);
-        result.DonorName.Should().Be("New Donor");
-        result.Amount.Should().Be(500.00m);
-        result.DonationType.Should().Be("Check");
-        result.Purpose.Should().Be("Building Fund");
-        result.Status.Should().Be("Pending");
-        result.DonationDate.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        result.ReceiptNumber.Should().Be("R003");
-        result.Notes.Should().Be("Building fund donation");
-        result.IsActive.Should().BeTrue();
-        result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-    }
-
-    [Fact]
-    public async Task UpdateDonationStatusAsync_WithValidId_ShouldReturnDonation()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
-
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
-
-        var donation = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Pending",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Donations.Add(donation);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.UpdateDonationStatusAsync(donation.Id, "Completed");
-
-        // Assert
-        result.Should().NotBeNull();
-        result!.Status.Should().Be("Completed");
-        var updatedDonation = await context.Donations.FindAsync(donation.Id);
-        updatedDonation!.Status.Should().Be("Completed");
-    }
-
-    [Fact]
-    public async Task UpdateDonationStatusAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
-
-        // Act
-        var result = await service.UpdateDonationStatusAsync(999, "Completed");
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task DeleteDonationAsync_WithValidId_ShouldReturnTrue()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
-
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
-
-        var donation = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Donations.Add(donation);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.DeleteDonationAsync(donation.Id);
-
-        // Assert
-        result.Should().BeTrue();
-        var deletedDonation = await context.Donations.FindAsync(donation.Id);
-        deletedDonation!.IsActive.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task DeleteDonationAsync_WithInvalidId_ShouldReturnFalse()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
-
-        // Act
-        var result = await service.DeleteDonationAsync(999);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task GetTotalDonationsByTempleAsync_WithValidTempleId_ShouldReturnTotal()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DonationService(context);
-
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
-
-        var donation1 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "John Doe",
-            Amount = 100.00m,
-            DonationType = "Cash",
-            Purpose = "Temple Maintenance",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-1),
-            ReceiptNumber = "R001",
-            Notes = "Monthly donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var donation2 = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "Jane Smith",
-            Amount = 250.00m,
-            DonationType = "Bank Transfer",
-            Purpose = "New Equipment",
-            Status = "Completed",
-            DonationDate = DateTime.UtcNow.AddDays(-2),
-            ReceiptNumber = "R002",
-            Notes = "Equipment donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var pendingDonation = new Donation 
-        { 
-            TempleId = temple.Id,
-            DonorName = "Bob Johnson",
-            Amount = 75.00m,
-            DonationType = "Cash",
-            Purpose = "General Fund",
-            Status = "Pending",
-            DonationDate = DateTime.UtcNow.AddDays(-3),
-            ReceiptNumber = "R003",
-            Notes = "General donation",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Donations.AddRange(donation1, donation2, pendingDonation);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.GetTotalDonationsByTempleAsync(temple.Id);
-
-        // Assert
-        result.Should().Be(350.00m); // Only completed donations (100 + 250)
-    }
+		public void Dispose()
+		{
+			_context.Dispose();
+		}
+	}
 }

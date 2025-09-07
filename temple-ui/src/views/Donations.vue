@@ -14,7 +14,7 @@
       <!-- Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="searchTerm"
               placeholder="Search donations..."
@@ -26,7 +26,7 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-select
               v-model="templeFilter"
               placeholder="Filter by Temple"
@@ -41,7 +41,7 @@
               />
             </el-select>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-select
               v-model="typeFilter"
               placeholder="Filter by Type"
@@ -54,7 +54,7 @@
               <el-option label="Other" value="Other" />
             </el-select>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="24" :sm="12" :md="4" :lg="4" :xl="4">
             <el-date-picker
               v-model="dateRange"
               type="daterange"
@@ -64,25 +64,31 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               @change="handleDateFilter"
+              style="width: 100%"
             />
           </el-col>
-          <el-col :span="6">
-            <el-button @click="loadDonations" :loading="loading">
-              <el-icon><Refresh /></el-icon>
-              Refresh
-            </el-button>
-            <el-button type="success" @click="exportDonations">
-              <el-icon><Download /></el-icon>
-              Export
-            </el-button>
+          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
+            <div class="action-buttons">
+              <el-button @click="loadDonations" :loading="loading" class="refresh-btn">
+                <el-icon><Refresh /></el-icon>
+                <span class="btn-text">Refresh</span>
+              </el-button>
+              <el-button type="success" @click="exportDonations" class="export-btn">
+                <el-icon><Download /></el-icon>
+                <span class="btn-text">Export</span>
+              </el-button>
+            </div>
           </el-col>
         </el-row>
       </div>
 
+      <!-- Devotional Banner -->
+      <div class="devotional-banner donations-banner"></div>
+
       <!-- Summary Cards -->
       <div class="summary-cards">
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon total">
@@ -95,7 +101,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon count">
@@ -108,7 +114,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon average">
@@ -121,7 +127,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon recent">
@@ -138,57 +144,61 @@
       </div>
 
       <!-- Donations Table -->
-      <el-table
-        :data="donations"
-        v-loading="loading"
-        stripe
-        style="width: 100%"
-        @row-click="handleRowClick"
-      >
-        <el-table-column prop="donorName" label="Donor Name" min-width="150" />
-        <el-table-column prop="templeName" label="Temple" min-width="150" />
-        <el-table-column prop="amount" label="Amount" width="120">
-          <template #default="scope">
-            ₹{{ scope.row.amount.toLocaleString() }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="donationType" label="Type" width="100">
-          <template #default="scope">
-            <el-tag :type="getTypeTagType(scope.row.donationType)">
-              {{ scope.row.donationType }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="donationDate" label="Date" width="120">
-          <template #default="scope">
-            {{ formatDate(scope.row.donationDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="purpose" label="Purpose" min-width="150" />
-        <el-table-column prop="status" label="Status" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'Completed' ? 'success' : 'warning'">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Actions" width="200" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click.stop="editDonation(scope.row)">
-              <el-icon><Edit /></el-icon>
-              Edit
-            </el-button>
-            <el-button
-              size="small"
-              type="danger"
-              @click.stop="deleteDonation(scope.row.id)"
-            >
-              <el-icon><Delete /></el-icon>
-              Delete
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table
+          :data="donations"
+          v-loading="loading"
+          stripe
+          style="width: 100%"
+          @row-click="handleRowClick"
+        >
+          <el-table-column prop="donorName" label="Donor Name" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="templeName" label="Temple" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="amount" label="Amount" width="120">
+            <template #default="scope">
+              ₹{{ scope.row.amount.toLocaleString() }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="donationType" label="Type" width="100">
+            <template #default="scope">
+              <el-tag :type="getTypeTagType(scope.row.donationType)" size="small">
+                {{ scope.row.donationType }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="donationDate" label="Date" width="120">
+            <template #default="scope">
+              {{ formatDate(scope.row.donationDate) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="purpose" label="Purpose" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="status" label="Status" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 'Completed' ? 'success' : 'warning'" size="small">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Actions" width="200" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button size="small" @click.stop="editDonation(scope.row)">
+                  <el-icon><Edit /></el-icon>
+                  <span class="btn-text">Edit</span>
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click.stop="deleteDonation(scope.row.id)"
+                >
+                  <el-icon><Delete /></el-icon>
+                  <span class="btn-text">Delete</span>
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <!-- Pagination -->
       <div class="pagination-container">
@@ -418,7 +428,7 @@ const donationRules = {
 const donationFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5000/api'
+const API_BASE = 'http://localhost:5051/api'
 
 // Computed properties
 const totalAmount = computed(() => {
@@ -761,5 +771,174 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+/* Responsive Design */
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.devotional-banner {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-banner-bg), var(--devi-fallback);
+  background-size: cover;
+  background-position: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.refresh-btn,
+.export-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .donations-container {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .card-header h2 {
+    font-size: 20px;
+  }
+  
+  .search-filters {
+    margin-bottom: 15px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+    font-size: 12px;
+  }
+  
+  .btn-text {
+    display: none;
+  }
+  
+  .refresh-btn .btn-text,
+  .export-btn .btn-text {
+    display: inline;
+  }
+  
+  .summary-cards {
+    margin-bottom: 15px;
+  }
+  
+  .summary-card {
+    margin-bottom: 10px;
+  }
+  
+  .summary-content {
+    gap: 10px;
+  }
+  
+  .summary-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .summary-value {
+    font-size: 20px;
+  }
+  
+  .summary-label {
+    font-size: 12px;
+  }
+  
+  .pagination-container {
+    text-align: center;
+  }
+  
+  .pagination-container .el-pagination {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .donations-container {
+    padding: 5px;
+  }
+  
+  .card-header h2 {
+    font-size: 18px;
+  }
+  
+  .search-filters {
+    margin-bottom: 10px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  
+  .summary-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 18px;
+  }
+  
+  .summary-value {
+    font-size: 18px;
+  }
+  
+  .summary-label {
+    font-size: 11px;
+  }
+  
+  .pagination-container .el-pagination {
+    font-size: 12px;
+  }
+  
+  .pagination-container .el-pagination .el-pager li {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .donations-container {
+    padding: 15px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 13px;
+  }
+  
+  .summary-icon {
+    width: 45px;
+    height: 45px;
+    font-size: 22px;
+  }
+  
+  .summary-value {
+    font-size: 22px;
+  }
 }
 </style>

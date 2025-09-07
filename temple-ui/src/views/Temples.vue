@@ -11,10 +11,13 @@
         </div>
       </template>
 
+      <!-- Devotional Banner -->
+      <div class="devotional-banner temples-banner"></div>
+
       <!-- Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
-          <el-col :span="8">
+          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8">
             <el-input
               v-model="searchTerm"
               placeholder="Search temples..."
@@ -26,7 +29,7 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="locationFilter.city"
               placeholder="City"
@@ -34,7 +37,7 @@
               @input="handleLocationFilter"
             />
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="locationFilter.state"
               placeholder="State"
@@ -42,52 +45,56 @@
               @input="handleLocationFilter"
             />
           </el-col>
-          <el-col :span="4">
-            <el-button @click="loadTemples" :loading="loading">
+          <el-col :xs="24" :sm="24" :md="4" :lg="4" :xl="4">
+            <el-button @click="loadTemples" :loading="loading" class="refresh-btn">
               <el-icon><Refresh /></el-icon>
-              Refresh
+              <span class="btn-text">Refresh</span>
             </el-button>
           </el-col>
         </el-row>
       </div>
 
       <!-- Temples Table -->
-      <el-table
-        :data="temples"
-        v-loading="loading"
-        stripe
-        style="width: 100%"
-        @row-click="handleRowClick"
-      >
-        <el-table-column prop="name" label="Temple Name" min-width="200" />
-        <el-table-column prop="city" label="City" width="120" />
-        <el-table-column prop="state" label="State" width="120" />
-        <el-table-column prop="establishedYear" label="Established" width="100" />
-        <el-table-column prop="deity" label="Main Deity" width="150" />
-        <el-table-column prop="status" label="Status" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Actions" width="200" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click.stop="editTemple(scope.row)">
-              <el-icon><Edit /></el-icon>
-              Edit
-            </el-button>
-            <el-button
-              size="small"
-              type="danger"
-              @click.stop="deleteTemple(scope.row.id)"
-            >
-              <el-icon><Delete /></el-icon>
-              Delete
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table
+          :data="temples"
+          v-loading="loading"
+          stripe
+          style="width: 100%"
+          @row-click="handleRowClick"
+        >
+          <el-table-column prop="name" label="Temple Name" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="city" label="City" width="120" show-overflow-tooltip />
+          <el-table-column prop="state" label="State" width="120" show-overflow-tooltip />
+          <el-table-column prop="establishedYear" label="Established" width="100" />
+          <el-table-column prop="deity" label="Main Deity" width="150" show-overflow-tooltip />
+          <el-table-column prop="status" label="Status" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'" size="small">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Actions" width="200" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button size="small" @click.stop="editTemple(scope.row)">
+                  <el-icon><Edit /></el-icon>
+                  <span class="btn-text">Edit</span>
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click.stop="deleteTemple(scope.row.id)"
+                >
+                  <el-icon><Delete /></el-icon>
+                  <span class="btn-text">Delete</span>
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <!-- Pagination -->
       <div class="pagination-container">
@@ -107,7 +114,9 @@
     <el-dialog
       v-model="showCreateDialog"
       :title="editingTemple ? 'Edit Temple' : 'Add New Temple'"
-      width="600px"
+      :width="dialogWidth"
+      :fullscreen="isMobile"
+      :close-on-click-modal="false"
     >
       <el-form
         ref="templeFormRef"
@@ -174,7 +183,8 @@
     <el-dialog
       v-model="showDetailsDialog"
       title="Temple Details"
-      width="700px"
+      :width="dialogWidth"
+      :fullscreen="isMobile"
     >
       <div v-if="selectedTemple" class="temple-details">
         <el-descriptions :column="2" border>
@@ -205,7 +215,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -249,8 +259,22 @@ const templeRules = {
 
 const templeFormRef = ref()
 
+// Responsive data
+const isMobile = ref(false)
+const dialogWidth = ref('600px')
+
 // API base URL
-const API_BASE = 'http://localhost:5000/api'
+const API_BASE = 'http://localhost:5051/api'
+
+// Responsive methods
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth <= 768
+  dialogWidth.value = isMobile.value ? '95%' : '600px'
+}
+
+const handleResize = () => {
+  checkScreenSize()
+}
 
 // Methods
 const loadTemples = async () => {
@@ -406,6 +430,12 @@ const handleCurrentChange = (val) => {
 // Lifecycle
 onMounted(() => {
   loadTemples()
+  checkScreenSize()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
@@ -444,5 +474,168 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+/* Responsive Design */
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.refresh-btn {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .temples-container {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .card-header h2 {
+    font-size: 20px;
+  }
+  
+  .search-filters {
+    margin-bottom: 15px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 3px;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+    font-size: 12px;
+  }
+  
+  .btn-text {
+    display: none;
+  }
+  
+  .refresh-btn .btn-text {
+    display: inline;
+  }
+  
+  .pagination-container {
+    text-align: center;
+  }
+  
+  .pagination-container .el-pagination {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .temples-container {
+    padding: 5px;
+  }
+  
+  .card-header h2 {
+    font-size: 18px;
+  }
+  
+  .search-filters {
+    margin-bottom: 10px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  
+  .pagination-container .el-pagination {
+    font-size: 12px;
+  }
+  
+  .pagination-container .el-pagination .el-pager li {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .temples-container {
+    padding: 15px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 13px;
+  }
+}
+
+/* Dialog Responsive Styles */
+@media (max-width: 768px) {
+  .el-dialog {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  .el-dialog__body {
+    padding: 15px !important;
+  }
+  
+  .el-form-item__label {
+    width: 100px !important;
+    text-align: left !important;
+  }
+  
+  .el-form-item__content {
+    margin-left: 100px !important;
+  }
+  
+  .el-textarea__inner {
+    min-height: 80px !important;
+  }
+  
+  .dialog-footer {
+    text-align: center !important;
+    padding: 10px 0 !important;
+  }
+  
+  .dialog-footer .el-button {
+    width: 100%;
+    margin: 5px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .el-dialog__body {
+    padding: 10px !important;
+  }
+  
+  .el-form-item__label {
+    width: 80px !important;
+    font-size: 12px !important;
+  }
+  
+  .el-form-item__content {
+    margin-left: 80px !important;
+  }
+  
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 14px !important;
+  }
 }
 </style>

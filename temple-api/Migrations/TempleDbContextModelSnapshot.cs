@@ -17,20 +17,18 @@ namespace TempleApi.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
 
-            modelBuilder.Entity("TempleApi.Domain.Entities.BaseEntity", b =>
+            modelBuilder.Entity("TempleApi.Domain.Entities.Category", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasColumnType("TEXT");
 
-                    b.Property<string>("Discriminator")
+                    b.Property<string>("Description")
                         .IsRequired()
-                        .HasMaxLength(21)
+                        .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsActive")
@@ -38,21 +36,32 @@ namespace TempleApi.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.ToTable("BaseEntity");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.HasDiscriminator<string>("Discriminator").HasValue("BaseEntity");
-
-                    b.UseTphMappingStrategy();
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Devotee", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -62,6 +71,9 @@ namespace TempleApi.Migrations
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("DateOfBirth")
@@ -81,6 +93,9 @@ namespace TempleApi.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -105,17 +120,27 @@ namespace TempleApi.Migrations
                     b.Property<int>("TempleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("TempleId");
 
-                    b.HasDiscriminator().HasValue("Devotee");
+                    b.ToTable("Devotees", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Donation", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("DevoteeId")
                         .HasColumnType("INTEGER");
@@ -134,6 +159,9 @@ namespace TempleApi.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Notes")
                         .IsRequired()
@@ -160,22 +188,26 @@ namespace TempleApi.Migrations
                     b.Property<int>("TempleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("DevoteeId");
 
                     b.HasIndex("TempleId");
 
-                    b.ToTable("BaseEntity", t =>
-                        {
-                            t.Property("TempleId")
-                                .HasColumnName("Donation_TempleId");
-                        });
-
-                    b.HasDiscriminator().HasValue("Donation");
+                    b.ToTable("Donations", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Event", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -197,6 +229,9 @@ namespace TempleApi.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Location")
                         .IsRequired()
@@ -234,29 +269,21 @@ namespace TempleApi.Migrations
                     b.Property<int>("TempleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("TempleId");
 
-                    b.ToTable("BaseEntity", t =>
-                        {
-                            t.Property("Email")
-                                .HasColumnName("Event_Email");
-
-                            t.Property("Phone")
-                                .HasColumnName("Event_Phone");
-
-                            t.Property("Status")
-                                .HasColumnName("Event_Status");
-
-                            t.Property("TempleId")
-                                .HasColumnName("Event_TempleId");
-                        });
-
-                    b.HasDiscriminator().HasValue("Event");
+                    b.ToTable("Events", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.EventRegistration", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
                     b.Property<decimal?>("AmountPaid")
                         .HasColumnType("TEXT");
@@ -264,6 +291,9 @@ namespace TempleApi.Migrations
                     b.Property<string>("AttendeeName")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("DevoteeId")
@@ -275,6 +305,9 @@ namespace TempleApi.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("EventId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsActive")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("PaymentMethod")
@@ -304,31 +337,255 @@ namespace TempleApi.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValue("Registered");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("DevoteeId");
 
                     b.HasIndex("EventId");
 
-                    b.ToTable("BaseEntity", t =>
-                        {
-                            t.Property("DevoteeId")
-                                .HasColumnName("EventRegistration_DevoteeId");
+                    b.ToTable("EventRegistrations", (string)null);
+                });
 
-                            t.Property("Email")
-                                .HasColumnName("EventRegistration_Email");
+            modelBuilder.Entity("TempleApi.Domain.Entities.Pooja", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
-                            t.Property("Phone")
-                                .HasColumnName("EventRegistration_Phone");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
 
-                            t.Property("Status")
-                                .HasColumnName("EventRegistration_Status");
-                        });
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
-                    b.HasDiscriminator().HasValue("EventRegistration");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Poojas", (string)null);
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.PoojaBooking", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime>("BookingDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PoojaId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("StaffId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PoojaId");
+
+                    b.HasIndex("StaffId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("PoojaBookings", (string)null);
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Product", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MinStockLevel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("Quantity")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.ToTable("Products", (string)null);
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Sale", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("FinalAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Notes")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("SaleDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("StaffId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StaffId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Sales", (string)null);
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.SaleItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("SaleId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SaleId");
+
+                    b.ToTable("SaleItems", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Service", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -342,6 +599,9 @@ namespace TempleApi.Migrations
 
                     b.Property<TimeSpan?>("EndTime")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<bool>("IsAvailable")
                         .ValueGeneratedOnAdd()
@@ -375,26 +635,21 @@ namespace TempleApi.Migrations
                     b.Property<int>("TempleId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
                     b.HasIndex("TempleId");
 
-                    b.ToTable("BaseEntity", t =>
-                        {
-                            t.Property("Description")
-                                .HasColumnName("Service_Description");
-
-                            t.Property("Name")
-                                .HasColumnName("Service_Name");
-
-                            t.Property("TempleId")
-                                .HasColumnName("Service_TempleId");
-                        });
-
-                    b.HasDiscriminator().HasValue("Service");
+                    b.ToTable("Services", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Temple", b =>
                 {
-                    b.HasBaseType("TempleApi.Domain.Entities.BaseEntity");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Address")
                         .IsRequired()
@@ -404,6 +659,9 @@ namespace TempleApi.Migrations
                     b.Property<string>("City")
                         .IsRequired()
                         .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Deity")
@@ -426,6 +684,9 @@ namespace TempleApi.Migrations
                         .HasColumnType("TEXT")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -446,34 +707,58 @@ namespace TempleApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.ToTable("BaseEntity", t =>
-                        {
-                            t.Property("Address")
-                                .HasColumnName("Temple_Address");
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
 
-                            t.Property("City")
-                                .HasColumnName("Temple_City");
+                    b.HasKey("Id");
 
-                            t.Property("Description")
-                                .HasColumnName("Temple_Description");
+                    b.ToTable("Temples", (string)null);
+                });
 
-                            t.Property("Email")
-                                .HasColumnName("Temple_Email");
+            modelBuilder.Entity("TempleApi.Domain.Entities.User", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
 
-                            t.Property("Name")
-                                .HasColumnName("Temple_Name");
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
 
-                            t.Property("Phone")
-                                .HasColumnName("Temple_Phone");
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
 
-                            t.Property("PostalCode")
-                                .HasColumnName("Temple_PostalCode");
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
-                            t.Property("State")
-                                .HasColumnName("Temple_State");
-                        });
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
 
-                    b.HasDiscriminator().HasValue("Temple");
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Devotee", b =>
@@ -535,6 +820,80 @@ namespace TempleApi.Migrations
                     b.Navigation("Event");
                 });
 
+            modelBuilder.Entity("TempleApi.Domain.Entities.PoojaBooking", b =>
+                {
+                    b.HasOne("TempleApi.Domain.Entities.Pooja", "Pooja")
+                        .WithMany("Bookings")
+                        .HasForeignKey("PoojaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TempleApi.Domain.Entities.User", "Staff")
+                        .WithMany("StaffBookings")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("TempleApi.Domain.Entities.User", "Customer")
+                        .WithMany("CustomerBookings")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Pooja");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Product", b =>
+                {
+                    b.HasOne("TempleApi.Domain.Entities.Category", "CategoryNavigation")
+                        .WithMany("Products")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("CategoryNavigation");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Sale", b =>
+                {
+                    b.HasOne("TempleApi.Domain.Entities.User", "Staff")
+                        .WithMany("StaffSales")
+                        .HasForeignKey("StaffId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TempleApi.Domain.Entities.User", "Customer")
+                        .WithMany("CustomerSales")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Staff");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.SaleItem", b =>
+                {
+                    b.HasOne("TempleApi.Domain.Entities.Product", "Product")
+                        .WithMany("SaleItems")
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("TempleApi.Domain.Entities.Sale", "Sale")
+                        .WithMany("SaleItems")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Product");
+
+                    b.Navigation("Sale");
+                });
+
             modelBuilder.Entity("TempleApi.Domain.Entities.Service", b =>
                 {
                     b.HasOne("TempleApi.Domain.Entities.Temple", "Temple")
@@ -544,6 +903,11 @@ namespace TempleApi.Migrations
                         .IsRequired();
 
                     b.Navigation("Temple");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Category", b =>
+                {
+                    b.Navigation("Products");
                 });
 
             modelBuilder.Entity("TempleApi.Domain.Entities.Devotee", b =>
@@ -558,6 +922,21 @@ namespace TempleApi.Migrations
                     b.Navigation("Registrations");
                 });
 
+            modelBuilder.Entity("TempleApi.Domain.Entities.Pooja", b =>
+                {
+                    b.Navigation("Bookings");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Product", b =>
+                {
+                    b.Navigation("SaleItems");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.Sale", b =>
+                {
+                    b.Navigation("SaleItems");
+                });
+
             modelBuilder.Entity("TempleApi.Domain.Entities.Temple", b =>
                 {
                     b.Navigation("Devotees");
@@ -567,6 +946,17 @@ namespace TempleApi.Migrations
                     b.Navigation("Events");
 
                     b.Navigation("Services");
+                });
+
+            modelBuilder.Entity("TempleApi.Domain.Entities.User", b =>
+                {
+                    b.Navigation("CustomerBookings");
+
+                    b.Navigation("CustomerSales");
+
+                    b.Navigation("StaffBookings");
+
+                    b.Navigation("StaffSales");
                 });
 #pragma warning restore 612, 618
         }

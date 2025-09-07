@@ -11,10 +11,13 @@
         </div>
       </template>
 
+      <!-- Devotional Banner -->
+      <div class="devotional-banner devotees-banner"></div>
+
       <!-- Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="searchTerm"
               placeholder="Search devotees..."
@@ -26,7 +29,7 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-select
               v-model="templeFilter"
               placeholder="Filter by Temple"
@@ -41,7 +44,7 @@
               />
             </el-select>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-select
               v-model="statusFilter"
               placeholder="Filter by Status"
@@ -52,56 +55,60 @@
               <el-option label="Inactive" value="Inactive" />
             </el-select>
           </el-col>
-          <el-col :span="6">
-            <el-button @click="loadDevotees" :loading="loading">
+          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
+            <el-button @click="loadDevotees" :loading="loading" class="refresh-btn">
               <el-icon><Refresh /></el-icon>
-              Refresh
+              <span class="btn-text">Refresh</span>
             </el-button>
           </el-col>
         </el-row>
       </div>
 
       <!-- Devotees Table -->
-      <el-table
-        :data="devotees"
-        v-loading="loading"
-        stripe
-        style="width: 100%"
-        @row-click="handleRowClick"
-      >
-        <el-table-column prop="name" label="Name" min-width="150" />
-        <el-table-column prop="email" label="Email" min-width="200" />
-        <el-table-column prop="phone" label="Phone" width="130" />
-        <el-table-column prop="templeName" label="Temple" min-width="150" />
-        <el-table-column prop="membershipDate" label="Member Since" width="120">
-          <template #default="scope">
-            {{ formatDate(scope.row.membershipDate) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="Status" width="100">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="Actions" width="200" fixed="right">
-          <template #default="scope">
-            <el-button size="small" @click.stop="editDevotee(scope.row)">
-              <el-icon><Edit /></el-icon>
-              Edit
-            </el-button>
-            <el-button
-              size="small"
-              type="danger"
-              @click.stop="deleteDevotee(scope.row.id)"
-            >
-              <el-icon><Delete /></el-icon>
-              Delete
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <div class="table-container">
+        <el-table
+          :data="devotees"
+          v-loading="loading"
+          stripe
+          style="width: 100%"
+          @row-click="handleRowClick"
+        >
+          <el-table-column prop="name" label="Name" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="email" label="Email" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="phone" label="Phone" width="130" />
+          <el-table-column prop="templeName" label="Temple" min-width="150" show-overflow-tooltip />
+          <el-table-column prop="membershipDate" label="Member Since" width="120">
+            <template #default="scope">
+              {{ formatDate(scope.row.membershipDate) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="Status" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'" size="small">
+                {{ scope.row.status }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="Actions" width="200" fixed="right">
+            <template #default="scope">
+              <div class="action-buttons">
+                <el-button size="small" @click.stop="editDevotee(scope.row)">
+                  <el-icon><Edit /></el-icon>
+                  <span class="btn-text">Edit</span>
+                </el-button>
+                <el-button
+                  size="small"
+                  type="danger"
+                  @click.stop="deleteDevotee(scope.row.id)"
+                >
+                  <el-icon><Delete /></el-icon>
+                  <span class="btn-text">Delete</span>
+                </el-button>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
 
       <!-- Pagination -->
       <div class="pagination-container">
@@ -304,7 +311,7 @@ const devoteeRules = {
 const devoteeFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5000/api'
+const API_BASE = 'http://localhost:5051/api'
 
 // Methods
 const loadDevotees = async () => {
@@ -524,5 +531,121 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+/* Responsive Design */
+.table-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+}
+
+.devotional-banner {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-banner-bg), var(--devi-fallback);
+  background-size: cover;
+  background-position: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.refresh-btn {
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .devotees-container {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .card-header h2 {
+    font-size: 20px;
+  }
+  
+  .search-filters {
+    margin-bottom: 15px;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 3px;
+  }
+  
+  .action-buttons .el-button {
+    width: 100%;
+    font-size: 12px;
+  }
+  
+  .btn-text {
+    display: none;
+  }
+  
+  .refresh-btn .btn-text {
+    display: inline;
+  }
+  
+  .pagination-container {
+    text-align: center;
+  }
+  
+  .pagination-container .el-pagination {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .devotees-container {
+    padding: 5px;
+  }
+  
+  .card-header h2 {
+    font-size: 18px;
+  }
+  
+  .search-filters {
+    margin-bottom: 10px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  
+  .pagination-container .el-pagination {
+    font-size: 12px;
+  }
+  
+  .pagination-container .el-pagination .el-pager li {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .devotees-container {
+    padding: 15px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 13px;
+  }
 }
 </style>

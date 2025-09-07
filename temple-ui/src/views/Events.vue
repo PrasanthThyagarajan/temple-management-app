@@ -13,8 +13,9 @@
 
       <!-- Search and Filters -->
       <div class="search-filters">
+        <div class="devotional-banner events-banner"></div>
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="searchTerm"
               placeholder="Search events..."
@@ -26,7 +27,7 @@
               </template>
             </el-input>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-select
               v-model="templeFilter"
               placeholder="Filter by Temple"
@@ -41,7 +42,7 @@
               />
             </el-select>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-select
               v-model="statusFilter"
               placeholder="Filter by Status"
@@ -54,7 +55,7 @@
               <el-option label="Cancelled" value="Cancelled" />
             </el-select>
           </el-col>
-          <el-col :span="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-date-picker
               v-model="dateFilter"
               type="date"
@@ -64,7 +65,7 @@
               @change="handleDateFilter"
             />
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
             <el-button @click="loadEvents" :loading="loading">
               <el-icon><Refresh /></el-icon>
               Refresh
@@ -80,7 +81,7 @@
       <!-- Summary Cards -->
       <div class="summary-cards">
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon total">
@@ -93,7 +94,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon upcoming">
@@ -106,7 +107,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon ongoing">
@@ -119,7 +120,7 @@
               </div>
             </el-card>
           </el-col>
-          <el-col :span="6">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
             <el-card class="summary-card">
               <div class="summary-content">
                 <div class="summary-icon completed">
@@ -158,7 +159,7 @@
       </div>
 
       <!-- Events Table -->
-      <div v-else>
+      <div v-else class="table-container">
         <el-table
           :data="events"
           v-loading="loading"
@@ -493,7 +494,7 @@ const eventRules = {
 const eventFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5000/api'
+const API_BASE = 'http://localhost:5051/api'
 
 // Computed properties
 const upcomingEvents = computed(() => {
@@ -900,5 +901,56 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.devotional-banner {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-banner-bg), var(--devi-fallback);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .search-filters .el-row {
+    row-gap: 10px;
+  }
+
+  .summary-value {
+    font-size: 20px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+  }
+
+  .el-button .el-icon + span,
+  .el-button .el-icon + .btn-text {
+    margin-left: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .summary-content {
+    gap: 10px;
+  }
+
+  .el-button span:not(.el-icon) {
+    display: none;
+  }
 }
 </style>

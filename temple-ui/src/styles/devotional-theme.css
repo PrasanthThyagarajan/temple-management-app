@@ -1,0 +1,120 @@
+/* Devotional Theme: Tamil Devi Temple Aesthetic */
+
+:root {
+  /* Element Plus primary palette overrides */
+  --el-color-primary: #a8321a; /* maroon */
+  --el-color-primary-light-3: #c14a31;
+  --el-color-primary-light-5: #cf6e59;
+  --el-color-primary-light-7: #dd9281;
+  --el-color-primary-light-8: #e5a394;
+  --el-color-primary-light-9: #f2d1ca;
+  /* Fallback decorative banner */
+  --devi-fallback: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 400'><rect width='1200' height='400' fill='none'/><g fill='rgba(255,215,0,0.22)'><circle cx='60' cy='60' r='6'/><circle cx='180' cy='120' r='4'/><circle cx='300' cy='80' r='5'/><circle cx='420' cy='140' r='3'/><circle cx='540' cy='60' r='5'/><circle cx='660' cy='120' r='4'/><circle cx='780' cy='80' r='6'/><circle cx='900' cy='140' r='3'/><circle cx='1020' cy='60' r='5'/></g></svg>");
+  /* Custom hero/header background (user-provided) */
+  --devotional-hero-bg: url('/images/temple-hero.jpg');
+  --devotional-header-bg: url('/images/temple-hero.jpg');
+  --devotional-banner-bg: url('/images/temple-banner.jpg');
+}
+
+html, body {
+  background: #faf7f2;
+}
+
+/* Subtle sacred pattern background using gradients */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient( circle at 10% 10%, rgba(168,50,26,0.06) 0%, transparent 40%),
+    radial-gradient( circle at 90% 20%, rgba(218,165,32,0.06) 0%, transparent 45%),
+    radial-gradient( circle at 20% 90%, rgba(221,146,39,0.05) 0%, transparent 40%);
+  background-repeat: no-repeat;
+}
+
+/* Header: Maroon to Saffron with optional image overlay */
+.el-header {
+  background: linear-gradient(135deg, rgba(168,50,26,0.92) 0%, rgba(221,146,39,0.92) 100%), var(--devotional-header-bg, url('/images/hero-devi.svg')) !important;
+  background-size: cover !important;
+  background-position: center !important;
+}
+
+/* Logo and nav accents */
+.logo-text {
+  letter-spacing: 0.5px;
+}
+
+.nav-menu .el-menu-item.is-active {
+  background-color: rgba(255, 215, 0, 0.18) !important; /* golden highlight */
+}
+
+/* Card headers with ornamental underline */
+.el-card__header {
+  position: relative;
+}
+.el-card__header::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 8px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(218,165,32,0) 0%, rgba(218,165,32,0.8) 30%, rgba(218,165,32,0.8) 70%, rgba(218,165,32,0) 100%);
+}
+
+/* Primary buttons with subtle gold border */
+.el-button.el-button--primary {
+  border-color: #b8860b;
+  box-shadow: 0 1px 0 rgba(184,134,11,0.4) inset, 0 1px 6px rgba(168,50,26,0.15);
+}
+
+/* Table header style */
+.el-table th.el-table__cell {
+  background: #fff7ec;
+  color: #7a3d2a;
+}
+
+/* Quick links buttons */
+.quick-links .el-button {
+  border-color: #b8860b;
+  color: #7a3d2a;
+}
+
+/* Decorative borders for sections */
+.devotional-section {
+  border: 2px solid transparent;
+  border-image: linear-gradient(90deg, #b8860b, #a8321a) 1;
+  border-radius: 8px;
+}
+
+/* Responsive image utility */
+.devotional-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+}
+
+/* Hero section for dashboard */
+.devotional-hero {
+  background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-hero-bg, url('/images/hero-devi.jpg')), var(--devi-fallback);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  border-radius: 12px;
+}
+
+/* Tamil friendly headings (fallback to system Tamil fonts if available) */
+h1, h2, h3, .logo-text {
+  font-family: "Noto Sans Tamil", "Latha", "Tunga", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+@media (max-width: 768px) {
+  .devotional-hero {
+    border-radius: 10px;
+  }
+}
+
+

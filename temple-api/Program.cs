@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using TempleApi.Data;
+using TempleApi.Repositories.Interfaces;
+using TempleApi.Domain.Entities;
 using TempleApi.Services;
 using TempleApi.Services.Interfaces;
 using TempleApi.Models.DTOs;
@@ -77,18 +79,44 @@ switch (provider)
         throw new ArgumentException($"Unsupported database provider: {provider}");
 }
 
+// Register repositories
+builder.Services.AddScoped<IRepository<Temple>, TempleApi.Repositories.Repository<Temple>>();
+builder.Services.AddScoped<IRepository<Devotee>, TempleApi.Repositories.Repository<Devotee>>();
+builder.Services.AddScoped<IRepository<Donation>, TempleApi.Repositories.Repository<Donation>>();
+builder.Services.AddScoped<IRepository<Event>, TempleApi.Repositories.Repository<Event>>();
+builder.Services.AddScoped<IRepository<EventRegistration>, TempleApi.Repositories.Repository<EventRegistration>>();
+builder.Services.AddScoped<IRepository<Service>, TempleApi.Repositories.Repository<Service>>();
+
+// Shop Management repositories
+builder.Services.AddScoped<IUserRepository, TempleApi.Repositories.UserRepository>();
+builder.Services.AddScoped<ICategoryRepository, TempleApi.Repositories.CategoryRepository>();
+builder.Services.AddScoped<IProductRepository, TempleApi.Repositories.ProductRepository>();
+builder.Services.AddScoped<ISaleRepository, TempleApi.Repositories.SaleRepository>();
+builder.Services.AddScoped<IRepository<SaleItem>, TempleApi.Repositories.Repository<SaleItem>>();
+builder.Services.AddScoped<IRepository<Pooja>, TempleApi.Repositories.Repository<Pooja>>();
+builder.Services.AddScoped<IPoojaBookingRepository, TempleApi.Repositories.PoojaBookingRepository>();
+
 // Register services
 builder.Services.AddScoped<ITempleService, TempleService>();
 builder.Services.AddScoped<IDevoteeService, DevoteeService>();
 builder.Services.AddScoped<IDonationService, DonationService>();
 builder.Services.AddScoped<IEventService, EventService>();
 
+// Shop Management services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISaleService, SaleService>();
+builder.Services.AddScoped<IPoojaService, PoojaService>();
+builder.Services.AddScoped<IPoojaBookingService, PoojaBookingService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowVueApp", policy =>
     {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
+        policy.WithOrigins("http://localhost:5000", "http://localhost:5173", "http://localhost:5051", 
+                          "http://127.0.0.1:5173", "http://127.0.0.1:5000", "http://127.0.0.1:5051")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -611,6 +639,784 @@ app.MapGet("/api/events/search/{searchTerm}", async (string searchTerm, IEventSe
     catch (Exception ex)
     {
         Log.Error(ex, "Error searching events with term {SearchTerm}", searchTerm);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// User endpoints
+app.MapGet("/api/users", async (IUserService userService) =>
+{
+    try
+    {
+        var users = await userService.GetAllUsersAsync();
+        return Results.Ok(users);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all users");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/users/{id}", async (int id, IUserService userService) =>
+{
+    try
+    {
+        var user = await userService.GetUserByIdAsync(id);
+        if (user == null)
+            return Results.NotFound();
+        
+        return Results.Ok(user);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting user with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/users/email/{email}", async (string email, IUserService userService) =>
+{
+    try
+    {
+        var user = await userService.GetUserByEmailAsync(email);
+        if (user == null)
+            return Results.NotFound();
+        
+        return Results.Ok(user);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting user with email {Email}", email);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/users/role/{role}", async (TempleApi.Enums.UserRole role, IUserService userService) =>
+{
+    try
+    {
+        var users = await userService.GetUsersByRoleAsync(role);
+        return Results.Ok(users);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting users by role {Role}", role);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/users", async (CreateUserDto createDto, IUserService userService) =>
+{
+    try
+    {
+        var user = await userService.CreateUserAsync(createDto);
+        return Results.Created($"/api/users/{user.Id}", user);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating user");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/users/{id}", async (int id, CreateUserDto updateDto, IUserService userService) =>
+{
+    try
+    {
+        var user = await userService.UpdateUserAsync(id, updateDto);
+        return Results.Ok(user);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating user with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/users/{id}", async (int id, IUserService userService) =>
+{
+    try
+    {
+        var result = await userService.DeleteUserAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting user with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/users/validate", async (LoginRequest request, IUserService userService) =>
+{
+    try
+    {
+        var isValid = await userService.ValidateUserCredentialsAsync(request.Email, request.Password);
+        return Results.Ok(new { isValid });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error validating user credentials");
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Product endpoints
+app.MapGet("/api/products", async (IProductService productService) =>
+{
+    try
+    {
+        var products = await productService.GetAllProductsAsync();
+        return Results.Ok(products);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all products");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/products/{id}", async (int id, IProductService productService) =>
+{
+    try
+    {
+        var product = await productService.GetProductByIdAsync(id);
+        if (product == null)
+            return Results.NotFound();
+        
+        return Results.Ok(product);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting product with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/products/category/{category}", async (string category, IProductService productService) =>
+{
+    try
+    {
+        var products = await productService.GetProductsByCategoryAsync(category);
+        return Results.Ok(products);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting products by category {Category}", category);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/products", async (CreateProductDto createDto, IProductService productService) =>
+{
+    try
+    {
+        var product = await productService.CreateProductAsync(createDto);
+        return Results.Created($"/api/products/{product.Id}", product);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating product");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/products/{id}", async (int id, CreateProductDto updateDto, IProductService productService) =>
+{
+    try
+    {
+        var product = await productService.UpdateProductAsync(id, updateDto);
+        return Results.Ok(product);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating product with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/products/{id}/quantity", async (int id, int quantity, IProductService productService) =>
+{
+    try
+    {
+        var result = await productService.UpdateProductQuantityAsync(id, quantity);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.Ok(new { message = "Product quantity updated successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating product quantity for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/products/search/{searchTerm}", async (string searchTerm, IProductService productService) =>
+{
+    try
+    {
+        var products = await productService.SearchProductsAsync(searchTerm);
+        return Results.Ok(products);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error searching products with term {SearchTerm}", searchTerm);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/products/{id}/status", async (int id, string status, IProductService productService) =>
+{
+    try
+    {
+        var result = await productService.UpdateProductStatusAsync(id, status);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.Ok(new { message = "Product status updated successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating product status for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/products/{id}", async (int id, IProductService productService) =>
+{
+    try
+    {
+        var result = await productService.DeleteProductAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting product with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Sale endpoints
+app.MapGet("/api/sales", async (ISaleService saleService) =>
+{
+    try
+    {
+        var sales = await saleService.GetAllSalesAsync();
+        return Results.Ok(sales);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all sales");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/sales/{id}", async (int id, ISaleService saleService) =>
+{
+    try
+    {
+        var sale = await saleService.GetSaleByIdAsync(id);
+        if (sale == null)
+            return Results.NotFound();
+        
+        return Results.Ok(sale);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting sale with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/sales/customer/{customerId}", async (int customerId, ISaleService saleService) =>
+{
+    try
+    {
+        var sales = await saleService.GetSalesByCustomerAsync(customerId);
+        return Results.Ok(sales);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting sales for customer {CustomerId}", customerId);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/sales/staff/{staffId}", async (int staffId, ISaleService saleService) =>
+{
+    try
+    {
+        var sales = await saleService.GetSalesByStaffAsync(staffId);
+        return Results.Ok(sales);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting sales for staff {StaffId}", staffId);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/sales/date-range", async (DateTime startDate, DateTime endDate, ISaleService saleService) =>
+{
+    try
+    {
+        var sales = await saleService.GetSalesByDateRangeAsync(startDate, endDate);
+        return Results.Ok(sales);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting sales by date range");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/sales", async (CreateSaleDto createDto, ISaleService saleService) =>
+{
+    try
+    {
+        var sale = await saleService.CreateSaleAsync(createDto);
+        return Results.Created($"/api/sales/{sale.Id}", sale);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating sale");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/sales/search/{searchTerm}", async (string searchTerm, ISaleService saleService) =>
+{
+    try
+    {
+        var sales = await saleService.SearchSalesAsync(searchTerm);
+        return Results.Ok(sales);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error searching sales with term {SearchTerm}", searchTerm);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/sales/{id}", async (int id, CreateSaleDto updateDto, ISaleService saleService) =>
+{
+    try
+    {
+        var sale = await saleService.UpdateSaleAsync(id, updateDto);
+        return Results.Ok(sale);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating sale with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/sales/{id}/status", async (int id, string status, ISaleService saleService) =>
+{
+    try
+    {
+        var result = await saleService.UpdateSaleStatusAsync(id, status);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.Ok(new { message = "Sale status updated successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating sale status for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/sales/{id}", async (int id, ISaleService saleService) =>
+{
+    try
+    {
+        var result = await saleService.DeleteSaleAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting sale with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Pooja endpoints
+app.MapGet("/api/poojas", async (IPoojaService poojaService) =>
+{
+    try
+    {
+        var poojas = await poojaService.GetAllPoojasAsync();
+        return Results.Ok(poojas);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all poojas");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/poojas/{id}", async (int id, IPoojaService poojaService) =>
+{
+    try
+    {
+        var pooja = await poojaService.GetPoojaByIdAsync(id);
+        if (pooja == null)
+            return Results.NotFound();
+        
+        return Results.Ok(pooja);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/poojas", async (CreatePoojaDto createDto, IPoojaService poojaService) =>
+{
+    try
+    {
+        var pooja = await poojaService.CreatePoojaAsync(createDto);
+        return Results.Created($"/api/poojas/{pooja.Id}", pooja);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating pooja");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/poojas/{id}", async (int id, CreatePoojaDto updateDto, IPoojaService poojaService) =>
+{
+    try
+    {
+        var pooja = await poojaService.UpdatePoojaAsync(id, updateDto);
+        return Results.Ok(pooja);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating pooja with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/poojas/{id}", async (int id, IPoojaService poojaService) =>
+{
+    try
+    {
+        var result = await poojaService.DeletePoojaAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting pooja with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Pooja Booking endpoints
+app.MapGet("/api/pooja-bookings", async (IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var bookings = await bookingService.GetAllBookingsAsync();
+        return Results.Ok(bookings);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all pooja bookings");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/pooja-bookings/{id}", async (int id, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var booking = await bookingService.GetBookingByIdAsync(id);
+        if (booking == null)
+            return Results.NotFound();
+        
+        return Results.Ok(booking);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja booking with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/pooja-bookings/customer/{customerId}", async (int customerId, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var bookings = await bookingService.GetBookingsByCustomerAsync(customerId);
+        return Results.Ok(bookings);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja bookings for customer {CustomerId}", customerId);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/pooja-bookings/staff/{staffId}", async (int staffId, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var bookings = await bookingService.GetBookingsByStaffAsync(staffId);
+        return Results.Ok(bookings);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja bookings for staff {StaffId}", staffId);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/pooja-bookings/status/{status}", async (TempleApi.Enums.BookingStatus status, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var bookings = await bookingService.GetBookingsByStatusAsync(status);
+        return Results.Ok(bookings);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja bookings by status {Status}", status);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/pooja-bookings/date-range", async (DateTime startDate, DateTime endDate, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var bookings = await bookingService.GetBookingsByDateRangeAsync(startDate, endDate);
+        return Results.Ok(bookings);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting pooja bookings by date range");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/pooja-bookings", async (CreatePoojaBookingDto createDto, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var booking = await bookingService.CreateBookingAsync(createDto);
+        return Results.Created($"/api/pooja-bookings/{booking.Id}", booking);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating pooja booking");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/pooja-bookings/{id}/status", async (int id, TempleApi.Enums.BookingStatus status, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var booking = await bookingService.UpdateBookingStatusAsync(id, status);
+        return Results.Ok(booking);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating pooja booking status for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/pooja-bookings/{id}/assign-staff", async (int id, int staffId, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var booking = await bookingService.AssignStaffToBookingAsync(id, staffId);
+        return Results.Ok(booking);
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error assigning staff to pooja booking for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/pooja-bookings/{id}", async (int id, IPoojaBookingService bookingService) =>
+{
+    try
+    {
+        var result = await bookingService.DeleteBookingAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting pooja booking with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Category endpoints
+app.MapGet("/api/categories", async (ICategoryService categoryService) =>
+{
+    try
+    {
+        var categories = await categoryService.GetAllCategoriesAsync();
+        return Results.Ok(categories);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all categories");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/categories/{id}", async (int id, ICategoryService categoryService) =>
+{
+    try
+    {
+        var category = await categoryService.GetCategoryByIdAsync(id);
+        if (category == null)
+            return Results.NotFound();
+        
+        return Results.Ok(category);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting category with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/categories/active", async (ICategoryService categoryService) =>
+{
+    try
+    {
+        var categories = await categoryService.GetActiveCategoriesAsync();
+        return Results.Ok(categories);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting active categories");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/categories", async (CreateCategoryDto createDto, ICategoryService categoryService) =>
+{
+    try
+    {
+        var category = await categoryService.CreateCategoryAsync(createDto);
+        return Results.Created($"/api/categories/{category.Id}", category);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating category");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/categories/{id}", async (int id, CreateCategoryDto updateDto, ICategoryService categoryService) =>
+{
+    try
+    {
+        var category = await categoryService.UpdateCategoryAsync(id, updateDto);
+        if (category == null)
+            return Results.NotFound();
+        
+        return Results.Ok(category);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating category with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/categories/{id}/toggle-status", async (int id, ICategoryService categoryService) =>
+{
+    try
+    {
+        var result = await categoryService.ToggleCategoryStatusAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.Ok(new { message = "Category status updated successfully" });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error toggling category status for id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/categories/{id}", async (int id, ICategoryService categoryService) =>
+{
+    try
+    {
+        var result = await categoryService.DeleteCategoryAsync(id);
+        if (!result)
+            return Results.NotFound();
+        
+        return Results.NoContent();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error deleting category with id {Id}", id);
         return Results.Problem("Internal server error");
     }
 });

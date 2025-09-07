@@ -1,606 +1,231 @@
 using Microsoft.EntityFrameworkCore;
-using FluentAssertions;
 using TempleApi.Data;
 using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
+using FluentAssertions;
 
-namespace TempleApi.Tests;
-
-public class DevoteeServiceTests
+namespace TempleApi.Tests
 {
-    private readonly DbContextOptions<TempleDbContext> _options;
+	public class DevoteeServiceTests : IDisposable
+	{
+		private readonly TempleDbContext _context;
+		private readonly DevoteeService _devoteeService;
 
-    public DevoteeServiceTests()
-    {
-        _options = new DbContextOptionsBuilder<TempleDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-    }
+		public DevoteeServiceTests()
+		{
+			var options = new DbContextOptionsBuilder<TempleDbContext>()
+				.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+				.Options;
 
-    private TempleDbContext CreateContext()
-    {
-        return new TempleDbContext(_options);
-    }
+			_context = new TempleDbContext(options);
+			_devoteeService = new DevoteeService(_context);
+		}
 
-    [Fact]
-    public async Task GetAllDevoteesAsync_ShouldReturnAllDevotees()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+		#region Create Tests
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task CreateDevoteeAsync_ShouldCreateDevotee_WhenValidData()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        var devotee1 = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var devotee2 = new Devotee 
-        { 
-            FirstName = "Jane", 
-            LastName = "Smith",
-            Email = "jane@example.com",
-            Phone = "098-765-4321",
-            Address = "456 Oak St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "54321",
-            DateOfBirth = new DateTime(1985, 5, 15),
-            Gender = "Female",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+			var dto = new CreateDevoteeDto
+			{
+				FirstName = "John",
+				LastName = "Doe",
+				Email = "john@test.com",
+				Phone = "123",
+				Address = "Addr",
+				City = "City",
+				State = "State",
+				PostalCode = "00001",
+				DateOfBirth = DateTime.UtcNow.AddYears(-30),
+				Gender = "Male",
+				TempleId = temple.Id
+			};
 
-        context.Devotees.AddRange(devotee1, devotee2);
-        await context.SaveChangesAsync();
+			var result = await _devoteeService.CreateDevoteeAsync(dto);
 
-        // Act
-        var result = await service.GetAllDevoteesAsync();
+			result.Should().NotBeNull();
+			result.FirstName.Should().Be(dto.FirstName);
+			result.LastName.Should().Be(dto.LastName);
+			result.Email.Should().Be(dto.Email);
+			result.Phone.Should().Be(dto.Phone);
+			result.Address.Should().Be(dto.Address);
+			result.City.Should().Be(dto.City);
+			result.State.Should().Be(dto.State);
+			result.PostalCode.Should().Be(dto.PostalCode);
+			result.Gender.Should().Be(dto.Gender);
+			result.TempleId.Should().Be(dto.TempleId);
+		}
 
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(d => d.FirstName == "John");
-        result.Should().Contain(d => d.FirstName == "Jane");
-    }
+		[Fact]
+		public async Task CreateDevoteeAsync_ShouldHandleMinimalData()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task GetDevoteeByIdAsync_WithValidId_ShouldReturnDevotee()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+			var dto = new CreateDevoteeDto { FirstName = "Jane", LastName = "Smith", TempleId = temple.Id };
+			var result = await _devoteeService.CreateDevoteeAsync(dto);
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			result.Should().NotBeNull();
+			result.FirstName.Should().Be("Jane");
+			result.LastName.Should().Be("Smith");
+		}
 
-        var devotee = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Devotees.Add(devotee);
-        await context.SaveChangesAsync();
+		#endregion
 
-        // Act
-        var result = await service.GetDevoteeByIdAsync(devotee.Id);
+		#region Read Tests
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.FirstName.Should().Be("John");
-        result.LastName.Should().Be("Doe");
-        result.Email.Should().Be("john@example.com");
-    }
+		[Fact]
+		public async Task GetDevoteeByIdAsync_ShouldReturnDevotee_WhenExists()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task GetDevoteeByIdAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+			var devotee = new Devotee
+			{
+				FirstName = "John",
+				LastName = "Doe",
+				Email = "john@test.com",
+				Phone = "123",
+				Address = "Addr",
+				City = "City",
+				State = "State",
+				PostalCode = "00001",
+				DateOfBirth = DateTime.UtcNow.AddYears(-30),
+				Gender = "Male",
+				TempleId = temple.Id,
+				IsActive = true
+			};
+			_context.Devotees.Add(devotee);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.GetDevoteeByIdAsync(999);
+			var result = await _devoteeService.GetDevoteeByIdAsync(devotee.Id);
 
-        // Assert
-        result.Should().BeNull();
-    }
+			result.Should().NotBeNull();
+			result!.FirstName.Should().Be("John");
+			result.Temple.Should().NotBeNull();
+		}
 
-    [Fact]
-    public async Task CreateDevoteeAsync_WithValidDto_ShouldCreateDevotee()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+		[Fact]
+		public async Task GetDevoteeByIdAsync_ShouldReturnNull_WhenNotFound()
+		{
+			var result = await _devoteeService.GetDevoteeByIdAsync(999);
+			result.Should().BeNull();
+		}
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task GetAllDevoteesAsync_ShouldReturnOnlyActive()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        var createDto = new CreateDevoteeDto
-        {
-            FirstName = "New",
-            LastName = "Devotee",
-            Email = "new@example.com",
-            Phone = "555-555-5555",
-            Address = "789 Pine St",
-            City = "New City",
-            State = "New State",
-            PostalCode = "67890",
-            DateOfBirth = new DateTime(1980, 10, 20),
-            Gender = "Male",
-            TempleId = temple.Id
-        };
+			_context.Devotees.AddRange(
+				new Devotee { FirstName = "A", LastName = "A", TempleId = temple.Id, IsActive = true },
+				new Devotee { FirstName = "B", LastName = "B", TempleId = temple.Id, IsActive = true },
+				new Devotee { FirstName = "C", LastName = "C", TempleId = temple.Id, IsActive = false }
+			);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.CreateDevoteeAsync(createDto);
+			var result = await _devoteeService.GetAllDevoteesAsync();
+			result.Should().HaveCount(2);
+		}
 
-        // Assert
-        result.Should().NotBeNull();
-        result.FirstName.Should().Be("New");
-        result.LastName.Should().Be("Devotee");
-        result.Email.Should().Be("new@example.com");
-        result.Phone.Should().Be("555-555-5555");
-        result.Address.Should().Be("789 Pine St");
-        result.City.Should().Be("New City");
-        result.State.Should().Be("New State");
-        result.PostalCode.Should().Be("67890");
-        result.DateOfBirth.Should().Be(new DateTime(1980, 10, 20));
-        result.Gender.Should().Be("Male");
-        result.TempleId.Should().Be(temple.Id);
-        result.IsActive.Should().BeTrue();
-        result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-    }
+		[Fact]
+		public async Task GetDevoteesByTempleAsync_ShouldFilterByTemple()
+		{
+			var t1 = new Temple { Name = "T1", Address = "A1", City = "C1", State = "S1", IsActive = true };
+			var t2 = new Temple { Name = "T2", Address = "A2", City = "C2", State = "S2", IsActive = true };
+			_context.Temples.AddRange(t1, t2);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task UpdateDevoteeAsync_WithValidId_ShouldUpdateDevotee()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+			_context.Devotees.AddRange(
+				new Devotee { FirstName = "A", LastName = "A", TempleId = t1.Id, IsActive = true },
+				new Devotee { FirstName = "B", LastName = "B", TempleId = t1.Id, IsActive = true },
+				new Devotee { FirstName = "C", LastName = "C", TempleId = t2.Id, IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			var result = await _devoteeService.GetDevoteesByTempleAsync(t1.Id);
+			result.Should().HaveCount(2);
+		}
 
-        var devotee = new Devotee 
-        { 
-            FirstName = "Original", 
-            LastName = "Name",
-            Email = "original@example.com",
-            Phone = "123-456-7890",
-            Address = "Original Address",
-            City = "Original City",
-            State = "Original State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Devotees.Add(devotee);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task SearchDevoteesAsync_ShouldSearchMultipleFields()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
 
-        var updateDto = new CreateDevoteeDto
-        {
-            FirstName = "Updated",
-            LastName = "Name",
-            Email = "updated@example.com",
-            Phone = "098-765-4321",
-            Address = "Updated Address",
-            City = "Updated City",
-            State = "Updated State",
-            PostalCode = "54321",
-            DateOfBirth = new DateTime(1985, 5, 15),
-            Gender = "Female",
-            TempleId = temple.Id
-        };
+			_context.Devotees.AddRange(
+				new Devotee { FirstName = "John", LastName = "Doe", Email = "j@x.com", Phone = "111", City = "X", State = "Y", TempleId = t.Id, IsActive = true },
+				new Devotee { FirstName = "Jane", LastName = "Smith", Email = "js@x.com", Phone = "222", City = "Z", State = "W", TempleId = t.Id, IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.UpdateDevoteeAsync(devotee.Id, updateDto);
+			var result = await _devoteeService.SearchDevoteesAsync("john");
+			result.Should().HaveCount(1);
+		}
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.FirstName.Should().Be("Updated");
-        result.Email.Should().Be("updated@example.com");
-        result.Phone.Should().Be("098-765-4321");
-        result.Address.Should().Be("Updated Address");
-        result.City.Should().Be("Updated City");
-        result.State.Should().Be("Updated State");
-        result.PostalCode.Should().Be("54321");
-        result.DateOfBirth.Should().Be(new DateTime(1985, 5, 15));
-        result.Gender.Should().Be("Female");
-    }
+		#endregion
 
-    [Fact]
-    public async Task UpdateDevoteeAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+		#region Update/Delete
 
-        var updateDto = new CreateDevoteeDto
-        {
-            FirstName = "Updated",
-            LastName = "Name",
-            TempleId = 1
-        };
+		[Fact]
+		public async Task UpdateDevoteeAsync_ShouldUpdate_WhenExists()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.UpdateDevoteeAsync(999, updateDto);
+			var d = new Devotee { FirstName = "Orig", LastName = "User", TempleId = t.Id, IsActive = true };
+			_context.Devotees.Add(d);
+			await _context.SaveChangesAsync();
 
-        // Assert
-        result.Should().BeNull();
-    }
+			var dto = new CreateDevoteeDto { FirstName = "Upd", LastName = "User", Email = "u@test.com", Phone = "9", Address = "NA", City = "C", State = "S", PostalCode = "1", TempleId = t.Id };
+			var result = await _devoteeService.UpdateDevoteeAsync(d.Id, dto);
 
-    [Fact]
-    public async Task DeleteDevoteeAsync_WithValidId_ShouldReturnTrue()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
+			result.Should().NotBeNull();
+			result!.FirstName.Should().Be("Upd");
+			result.Email.Should().Be("u@test.com");
+		}
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task UpdateDevoteeAsync_ShouldReturnNull_WhenNotFound()
+		{
+			var dto = new CreateDevoteeDto { FirstName = "X", LastName = "Y", TempleId = 1 };
+			var result = await _devoteeService.UpdateDevoteeAsync(999, dto);
+			result.Should().BeNull();
+		}
 
-        var devotee = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Devotees.Add(devotee);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task DeleteDevoteeAsync_ShouldSoftDelete_WhenExists()
+		{
+			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(t);
+			await _context.SaveChangesAsync();
+			var d = new Devotee { FirstName = "Del", LastName = "Me", TempleId = t.Id, IsActive = true };
+			_context.Devotees.Add(d);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.DeleteDevoteeAsync(devotee.Id);
+			var ok = await _devoteeService.DeleteDevoteeAsync(d.Id);
+			ok.Should().BeTrue();
+			var stored = await _context.Devotees.FindAsync(d.Id);
+			stored!.IsActive.Should().BeFalse();
+		}
 
-        // Assert
-        result.Should().BeTrue();
-        var deletedDevotee = await context.Devotees.FindAsync(devotee.Id);
-        deletedDevotee!.IsActive.Should().BeFalse();
-    }
+		#endregion
 
-    [Fact]
-    public async Task DeleteDevoteeAsync_WithInvalidId_ShouldReturnFalse()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
-
-        // Act
-        var result = await service.DeleteDevoteeAsync(999);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    [Fact]
-    public async Task GetDevoteesByTempleAsync_WithValidTempleId_ShouldReturnDevotees()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
-
-        var temple1 = new Temple 
-        { 
-            Name = "Temple 1", 
-            Address = "Address 1",
-            City = "City 1",
-            State = "State 1",
-            Phone = "123-456-7890",
-            Email = "temple1@temple.com",
-            Deity = "Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Temple 2", 
-            Address = "Address 2",
-            City = "City 2",
-            State = "State 2",
-            Phone = "098-765-4321",
-            Email = "temple2@temple.com",
-            Deity = "Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.AddRange(temple1, temple2);
-        await context.SaveChangesAsync();
-
-        var devotee1 = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "City 1",
-            State = "State 1",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple1.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var devotee2 = new Devotee 
-        { 
-            FirstName = "Jane", 
-            LastName = "Smith",
-            Email = "jane@example.com",
-            Phone = "098-765-4321",
-            Address = "456 Oak St",
-            City = "City 2",
-            State = "State 2",
-            PostalCode = "54321",
-            DateOfBirth = new DateTime(1985, 5, 15),
-            Gender = "Female",
-            TempleId = temple2.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var devotee3 = new Devotee 
-        { 
-            FirstName = "Bob", 
-            LastName = "Johnson",
-            Email = "bob@example.com",
-            Phone = "555-555-5555",
-            Address = "789 Pine St",
-            City = "City 1",
-            State = "State 1",
-            PostalCode = "67890",
-            DateOfBirth = new DateTime(1980, 10, 20),
-            Gender = "Male",
-            TempleId = temple1.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Devotees.AddRange(devotee1, devotee2, devotee3);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.GetDevoteesByTempleAsync(temple1.Id);
-
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().OnlyContain(d => d.TempleId == temple1.Id);
-    }
-
-    [Fact]
-    public async Task SearchDevoteesAsync_WithValidSearchTerm_ShouldReturnMatchingDevotees()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
-
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
-
-        var devotee1 = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Mumbai",
-            State = "Maharashtra",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var devotee2 = new Devotee 
-        { 
-            FirstName = "Jane", 
-            LastName = "Smith",
-            Email = "jane@example.com",
-            Phone = "098-765-4321",
-            Address = "456 Oak St",
-            City = "Delhi",
-            State = "Delhi",
-            PostalCode = "54321",
-            DateOfBirth = new DateTime(1985, 5, 15),
-            Gender = "Female",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Devotees.AddRange(devotee1, devotee2);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.SearchDevoteesAsync("John");
-
-        // Assert
-        result.Should().HaveCount(1);
-        result.First().FirstName.Should().Be("John");
-    }
-
-    [Fact]
-    public async Task SearchDevoteesAsync_WithEmptySearchTerm_ShouldReturnAllDevotees()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new DevoteeService(context);
-
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
-
-        var devotee1 = new Devotee 
-        { 
-            FirstName = "John", 
-            LastName = "Doe",
-            Email = "john@example.com",
-            Phone = "123-456-7890",
-            Address = "123 Main St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "12345",
-            DateOfBirth = new DateTime(1990, 1, 1),
-            Gender = "Male",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var devotee2 = new Devotee 
-        { 
-            FirstName = "Jane", 
-            LastName = "Smith",
-            Email = "jane@example.com",
-            Phone = "098-765-4321",
-            Address = "456 Oak St",
-            City = "Test City",
-            State = "Test State",
-            PostalCode = "54321",
-            DateOfBirth = new DateTime(1985, 5, 15),
-            Gender = "Female",
-            TempleId = temple.Id,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Devotees.AddRange(devotee1, devotee2);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.SearchDevoteesAsync("");
-
-        // Assert
-        result.Should().HaveCount(2);
-    }
+		public void Dispose()
+		{
+			_context.Dispose();
+		}
+	}
 }

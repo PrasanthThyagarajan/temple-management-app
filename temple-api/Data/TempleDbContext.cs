@@ -15,18 +15,36 @@ namespace TempleApi.Data
         public DbSet<Event> Events { get; set; }
         public DbSet<EventRegistration> EventRegistrations { get; set; }
         public DbSet<Service> Services { get; set; }
+        
+        // Shop Management entities
+        public DbSet<User> Users { get; set; }
+        public DbSet<Category> Categories { get; set; }
+        public DbSet<Product> Products { get; set; }
+        public DbSet<Sale> Sales { get; set; }
+        public DbSet<SaleItem> SaleItems { get; set; }
+        public DbSet<Pooja> Poojas { get; set; }
+        public DbSet<PoojaBooking> PoojaBookings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Base entity configuration
-            modelBuilder.Entity<BaseEntity>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-                entity.Property(e => e.IsActive).HasDefaultValue(true);
-            });
+            // Configure Table-per-Type (TPT) inheritance
+            modelBuilder.Entity<Temple>().ToTable("Temples");
+            modelBuilder.Entity<Devotee>().ToTable("Devotees");
+            modelBuilder.Entity<Donation>().ToTable("Donations");
+            modelBuilder.Entity<Event>().ToTable("Events");
+            modelBuilder.Entity<EventRegistration>().ToTable("EventRegistrations");
+            modelBuilder.Entity<Service>().ToTable("Services");
+            modelBuilder.Entity<User>().ToTable("Users");
+            modelBuilder.Entity<Category>().ToTable("Categories");
+            modelBuilder.Entity<Product>().ToTable("Products");
+            modelBuilder.Entity<Sale>().ToTable("Sales");
+            modelBuilder.Entity<SaleItem>().ToTable("SaleItems");
+            modelBuilder.Entity<Pooja>().ToTable("Poojas");
+            modelBuilder.Entity<PoojaBooking>().ToTable("PoojaBookings");
+
+            // Note: Do not map BaseEntity as a concrete table. Derived entities inherit its properties.
 
             // Temple configuration
             modelBuilder.Entity<Temple>(entity =>
@@ -119,6 +137,123 @@ namespace TempleApi.Data
                     .WithMany(e => e.Services)
                     .HasForeignKey(e => e.TempleId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // User configuration
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Phone).HasMaxLength(15);
+                entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
+                entity.Property(e => e.Role).IsRequired();
+                
+                entity.HasIndex(e => e.Email).IsUnique();
+            });
+
+            // Category configuration
+            modelBuilder.Entity<Category>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
+                entity.Property(e => e.SortOrder).HasDefaultValue(0);
+                
+                entity.HasIndex(e => e.Name).IsUnique();
+            });
+
+            // Product configuration
+            modelBuilder.Entity<Product>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Category).HasMaxLength(50);
+                entity.Property(e => e.Price).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.Quantity).HasDefaultValue(0);
+                entity.Property(e => e.MinStockLevel).HasDefaultValue(0);
+                entity.Property(e => e.Description).HasColumnType("TEXT");
+                entity.Property(e => e.Notes).HasColumnType("TEXT");
+                
+                entity.HasOne(e => e.CategoryNavigation)
+                    .WithMany(e => e.Products)
+                    .HasForeignKey(e => e.CategoryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Sale configuration
+            modelBuilder.Entity<Sale>(entity =>
+            {
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.StaffId).IsRequired();
+                entity.Property(e => e.TotalAmount).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.DiscountAmount).HasColumnType("decimal(10,2)");
+                entity.Property(e => e.FinalAmount).HasColumnType("decimal(10,2)");
+                entity.Property(e => e.PaymentMethod).HasMaxLength(50);
+                entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.Notes).HasColumnType("TEXT");
+                
+                entity.HasOne(e => e.Customer)
+                    .WithMany(e => e.CustomerSales)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.Staff)
+                    .WithMany(e => e.StaffSales)
+                    .HasForeignKey(e => e.StaffId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // SaleItem configuration
+            modelBuilder.Entity<SaleItem>(entity =>
+            {
+                entity.Property(e => e.SaleId).IsRequired();
+                entity.Property(e => e.ProductId).IsRequired();
+                entity.Property(e => e.Quantity).IsRequired();
+                entity.Property(e => e.UnitPrice).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.Subtotal).IsRequired().HasColumnType("decimal(10,2)");
+                
+                entity.HasOne(e => e.Sale)
+                    .WithMany(e => e.SaleItems)
+                    .HasForeignKey(e => e.SaleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasOne(e => e.Product)
+                    .WithMany(e => e.SaleItems)
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Pooja configuration
+            modelBuilder.Entity<Pooja>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Description).HasColumnType("TEXT");
+                entity.Property(e => e.Price).IsRequired().HasColumnType("decimal(10,2)");
+            });
+
+            // PoojaBooking configuration
+            modelBuilder.Entity<PoojaBooking>(entity =>
+            {
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.PoojaId).IsRequired();
+                entity.Property(e => e.ScheduledDate).IsRequired();
+                entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.Status).IsRequired();
+                entity.Property(e => e.BookingDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                
+                entity.HasOne(e => e.Customer)
+                    .WithMany(e => e.CustomerBookings)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.Pooja)
+                    .WithMany(e => e.Bookings)
+                    .HasForeignKey(e => e.PoojaId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                entity.HasOne(e => e.Staff)
+                    .WithMany(e => e.StaffBookings)
+                    .HasForeignKey(e => e.StaffId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
         }
 

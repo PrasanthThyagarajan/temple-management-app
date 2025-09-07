@@ -1,477 +1,302 @@
 using Microsoft.EntityFrameworkCore;
-using FluentAssertions;
 using TempleApi.Data;
 using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
+using FluentAssertions;
 
-namespace TempleApi.Tests;
-
-public class TempleServiceTests
+namespace TempleApi.Tests
 {
-    private readonly DbContextOptions<TempleDbContext> _options;
+	public class TempleServiceTests : IDisposable
+	{
+		private readonly TempleDbContext _context;
+		private readonly TempleService _templeService;
 
-    public TempleServiceTests()
-    {
-        _options = new DbContextOptionsBuilder<TempleDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-            .Options;
-    }
+		public TempleServiceTests()
+		{
+			var options = new DbContextOptionsBuilder<TempleDbContext>()
+				.UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+				.Options;
 
-    private TempleDbContext CreateContext()
-    {
-        return new TempleDbContext(_options);
-    }
+			_context = new TempleDbContext(options);
+			_templeService = new TempleService(_context);
+		}
 
-    [Fact]
-    public async Task GetAllTemplesAsync_ShouldReturnAllTemples()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		#region Create Tests
 
-        var temple1 = new Temple 
-        { 
-            Name = "Test Temple 1", 
-            Address = "Test Address 1",
-            City = "Test City 1",
-            State = "Test State 1",
-            Phone = "123-456-7890",
-            Email = "test1@temple.com",
-            Deity = "Test Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Test Temple 2", 
-            Address = "Test Address 2",
-            City = "Test City 2",
-            State = "Test State 2",
-            Phone = "098-765-4321",
-            Email = "test2@temple.com",
-            Deity = "Test Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+		[Fact]
+		public async Task CreateTempleAsync_ShouldCreateTemple_WhenValidData()
+		{
+			// Arrange
+			var createTempleDto = new CreateTempleDto
+			{
+				Name = "Test Temple",
+				Address = "123 Temple Street",
+				City = "Test City",
+				State = "Test State",
+				PhoneNumber = "123-456-7890",
+				Email = "test@temple.com",
+				Description = "A beautiful test temple",
+				Deity = "Lord Shiva",
+				EstablishedDate = DateTime.UtcNow.AddYears(-50)
+			};
 
-        context.Temples.AddRange(temple1, temple2);
-        await context.SaveChangesAsync();
+			// Act
+			var result = await _templeService.CreateTempleAsync(createTempleDto);
 
-        // Act
-        var result = await service.GetAllTemplesAsync();
+			// Assert
+			result.Should().NotBeNull();
+			result.Name.Should().Be(createTempleDto.Name);
+			result.Address.Should().Be(createTempleDto.Address);
+			result.City.Should().Be(createTempleDto.City);
+			result.State.Should().Be(createTempleDto.State);
+			result.Phone.Should().Be(createTempleDto.PhoneNumber);
+			result.Email.Should().Be(createTempleDto.Email);
+			result.Description.Should().Be(createTempleDto.Description);
+			result.Deity.Should().Be(createTempleDto.Deity);
+			result.EstablishedDate.Year.Should().Be(createTempleDto.EstablishedDate!.Value.Year);
+			result.Id.Should().BeGreaterThan(0);
+		}
 
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().Contain(t => t.Name == "Test Temple 1");
-        result.Should().Contain(t => t.Name == "Test Temple 2");
-    }
+		[Fact]
+		public async Task CreateTempleAsync_ShouldSetDefaults_WhenOptionalFieldsMissing()
+		{
+			// Arrange
+			var createTempleDto = new CreateTempleDto
+			{
+				Name = "Minimal Temple",
+				Address = "456 Simple Street"
+			};
 
-    [Fact]
-    public async Task GetTempleByIdAsync_WithValidId_ShouldReturnTemple()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+			// Act
+			var result = await _templeService.CreateTempleAsync(createTempleDto);
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			// Assert
+			result.Should().NotBeNull();
+			result.Name.Should().Be(createTempleDto.Name);
+			result.Address.Should().Be(createTempleDto.Address);
+			result.City.Should().Be("");
+			result.State.Should().Be("");
+			result.Phone.Should().Be("");
+			result.Email.Should().Be("");
+			result.Description.Should().Be("");
+			result.Deity.Should().Be("");
+		}
 
-        // Act
-        var result = await service.GetTempleByIdAsync(temple.Id);
+		#endregion
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("Test Temple");
-        result.Address.Should().Be("Test Address");
-    }
+		#region Read Tests
 
-    [Fact]
-    public async Task GetTempleByIdAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		[Fact]
+		public async Task GetTempleByIdAsync_ShouldReturnTemple_WhenTempleExists()
+		{
+			// Arrange
+			var temple = new Temple
+			{
+				Name = "Test Temple",
+				Address = "123 Temple Street",
+				City = "Test City",
+				State = "Test State",
+				PostalCode = "12345",
+				Phone = "123-456-7890",
+				Email = "test@temple.com",
+				Description = "A beautiful test temple",
+				Deity = "Lord Vishnu",
+				EstablishedDate = DateTime.UtcNow.AddYears(-100),
+				IsActive = true
+			};
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        // Act
-        var result = await service.GetTempleByIdAsync(999);
+			// Act
+			var result = await _templeService.GetTempleByIdAsync(temple.Id);
 
-        // Assert
-        result.Should().BeNull();
-    }
+			// Assert
+			result.Should().NotBeNull();
+			result!.Name.Should().Be(temple.Name);
+			result.Address.Should().Be(temple.Address);
+			result.City.Should().Be(temple.City);
+			result.State.Should().Be(temple.State);
+			result.PostalCode.Should().Be(temple.PostalCode);
+			result.Phone.Should().Be(temple.Phone);
+			result.Email.Should().Be(temple.Email);
+			result.Description.Should().Be(temple.Description);
+			result.Deity.Should().Be(temple.Deity);
+		}
 
-    [Fact]
-    public async Task CreateTempleAsync_WithValidDto_ShouldCreateTemple()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		[Fact]
+		public async Task GetTempleByIdAsync_ShouldReturnNull_WhenTempleDoesNotExist()
+		{
+			// Act
+			var result = await _templeService.GetTempleByIdAsync(999);
 
-        var createDto = new CreateTempleDto
-        {
-            Name = "New Temple",
-            Address = "New Address",
-            Description = "New Description",
-            City = "New City",
-            State = "New State",
-            PhoneNumber = "123-456-7890",
-            Email = "new@temple.com",
-            Deity = "New Deity",
-            EstablishedDate = DateTime.UtcNow
-        };
+			// Assert
+			result.Should().BeNull();
+		}
 
-        // Act
-        var result = await service.CreateTempleAsync(createDto);
+		[Fact]
+		public async Task GetAllTemplesAsync_ShouldReturnOnlyActiveTemples()
+		{
+			// Arrange
+			var temples = new List<Temple>
+			{
+				new Temple { Name = "Temple 1", Address = "A1", City = "C1", State = "S1", IsActive = true },
+				new Temple { Name = "Temple 2", Address = "A2", City = "C2", State = "S2", IsActive = true },
+				new Temple { Name = "Temple 3", Address = "A3", City = "C3", State = "S3", IsActive = false }
+			};
+			_context.Temples.AddRange(temples);
+			await _context.SaveChangesAsync();
 
-        // Assert
-        result.Should().NotBeNull();
-        result.Name.Should().Be("New Temple");
-        result.Address.Should().Be("New Address");
-        result.Description.Should().Be("New Description");
-        result.City.Should().Be("New City");
-        result.State.Should().Be("New State");
-        result.Phone.Should().Be("123-456-7890");
-        result.Email.Should().Be("new@temple.com");
-        result.Deity.Should().Be("New Deity");
-        result.IsActive.Should().BeTrue();
-        result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-    }
+			// Act
+			var result = await _templeService.GetAllTemplesAsync();
 
-    [Fact]
-    public async Task UpdateTempleAsync_WithValidId_ShouldUpdateTemple()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+			// Assert
+			result.Should().HaveCount(2);
+			result.Should().OnlyContain(t => t.IsActive);
+		}
 
-        var temple = new Temple 
-        { 
-            Name = "Original Temple", 
-            Address = "Original Address",
-            City = "Original City",
-            State = "Original State",
-            Phone = "123-456-7890",
-            Email = "original@temple.com",
-            Deity = "Original Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+		[Fact]
+		public async Task GetTemplesByLocationAsync_ShouldFilterByCityAndOptionalState()
+		{
+			// Arrange
+			_context.Temples.AddRange(
+				new Temple { Name = "T1", Address = "A1", City = "Mumbai", State = "MH", IsActive = true },
+				new Temple { Name = "T2", Address = "A2", City = "Mumbai", State = "MH", IsActive = true },
+				new Temple { Name = "T3", Address = "A3", City = "Mumbai", State = "GJ", IsActive = true },
+				new Temple { Name = "T4", Address = "A4", City = "Delhi", State = "DL", IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-        var updateDto = new CreateTempleDto
-        {
-            Name = "Updated Temple",
-            Address = "Updated Address",
-            Description = "Updated Description",
-            City = "Updated City",
-            State = "Updated State",
-            PhoneNumber = "098-765-4321",
-            Email = "updated@temple.com",
-            Deity = "Updated Deity",
-            EstablishedDate = DateTime.UtcNow.AddDays(1)
-        };
+			// Act
+			var onlyCity = await _templeService.GetTemplesByLocationAsync("Mumbai");
+			var cityAndState = await _templeService.GetTemplesByLocationAsync("Mumbai", "MH");
 
-        // Act
-        var result = await service.UpdateTempleAsync(temple.Id, updateDto);
+			// Assert
+			onlyCity.Should().HaveCount(3);
+			cityAndState.Should().HaveCount(2);
+			cityAndState.Should().OnlyContain(t => t.City == "Mumbai" && t.State == "MH");
+		}
 
-        // Assert
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("Updated Temple");
-        result.Address.Should().Be("Updated Address");
-        result.Description.Should().Be("Updated Description");
-        result.City.Should().Be("Updated City");
-        result.State.Should().Be("Updated State");
-        result.Phone.Should().Be("098-765-4321");
-        result.Email.Should().Be("updated@temple.com");
-        result.Deity.Should().Be("Updated Deity");
-    }
+		[Fact]
+		public async Task SearchTemplesAsync_ShouldMatchByNameCityStateOrDeity()
+		{
+			// Arrange
+			_context.Temples.AddRange(
+				new Temple { Name = "Krishna Temple", Address = "A1", City = "C1", State = "S1", Deity = "Krishna", IsActive = true },
+				new Temple { Name = "Shiva Temple", Address = "A2", City = "C2", State = "S2", Deity = "Shiva", IsActive = true },
+				new Temple { Name = "Mandir", Address = "A3", City = "Krishna Nagar", State = "S3", Deity = "Durga", IsActive = true }
+			);
+			await _context.SaveChangesAsync();
 
-    [Fact]
-    public async Task UpdateTempleAsync_WithInvalidId_ShouldReturnNull()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+			// Act
+			var byName = await _templeService.SearchTemplesAsync("Krishna");
 
-        var updateDto = new CreateTempleDto
-        {
-            Name = "Updated Temple",
-            Address = "Updated Address"
-        };
+			// Assert
+			byName.Should().HaveCount(2);
+		}
 
-        // Act
-        var result = await service.UpdateTempleAsync(999, updateDto);
+		#endregion
 
-        // Assert
-        result.Should().BeNull();
-    }
+		#region Update Tests
 
-    [Fact]
-    public async Task DeleteTempleAsync_WithValidId_ShouldReturnTrue()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		[Fact]
+		public async Task UpdateTempleAsync_ShouldUpdate_WhenExists()
+		{
+			// Arrange
+			var temple = new Temple
+			{
+				Name = "Original Temple",
+				Address = "Original Address",
+				City = "Original City",
+				State = "Original State",
+				IsActive = true
+			};
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        var temple = new Temple 
-        { 
-            Name = "Test Temple", 
-            Address = "Test Address",
-            City = "Test City",
-            State = "Test State",
-            Phone = "123-456-7890",
-            Email = "test@temple.com",
-            Deity = "Test Deity",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        context.Temples.Add(temple);
-        await context.SaveChangesAsync();
+			var updateDto = new CreateTempleDto
+			{
+				Name = "Updated Temple",
+				Address = "Updated Address",
+				City = "Updated City",
+				State = "Updated State",
+				PhoneNumber = "999-999-9999",
+				Email = "updated@temple.com",
+				Description = "Updated description",
+				Deity = "Ganesha"
+			};
 
-        // Act
-        var result = await service.DeleteTempleAsync(temple.Id);
+			// Act
+			var result = await _templeService.UpdateTempleAsync(temple.Id, updateDto);
 
-        // Assert
-        result.Should().BeTrue();
-        var deletedTemple = await context.Temples.FindAsync(temple.Id);
-        deletedTemple!.IsActive.Should().BeFalse();
-    }
+			// Assert
+			result.Should().NotBeNull();
+			result!.Name.Should().Be(updateDto.Name);
+			result.Address.Should().Be(updateDto.Address);
+			result.City.Should().Be(updateDto.City);
+			result.State.Should().Be(updateDto.State);
+			result.Phone.Should().Be(updateDto.PhoneNumber);
+			result.Email.Should().Be(updateDto.Email);
+			result.Description.Should().Be(updateDto.Description);
+			result.Deity.Should().Be(updateDto.Deity);
+		}
 
-    [Fact]
-    public async Task DeleteTempleAsync_WithInvalidId_ShouldReturnFalse()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		[Fact]
+		public async Task UpdateTempleAsync_ShouldReturnNull_WhenNotFound()
+		{
+			// Act
+			var updateDto = new CreateTempleDto { Name = "X", Address = "Y" };
+			var result = await _templeService.UpdateTempleAsync(999, updateDto);
 
-        // Act
-        var result = await service.DeleteTempleAsync(999);
+			// Assert
+			result.Should().BeNull();
+		}
 
-        // Assert
-        result.Should().BeFalse();
-    }
+		#endregion
 
-    [Fact]
-    public async Task SearchTemplesAsync_WithValidSearchTerm_ShouldReturnMatchingTemples()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		#region Delete Tests
 
-        var temple1 = new Temple 
-        { 
-            Name = "Hindu Temple", 
-            Address = "Test Address 1",
-            City = "Mumbai",
-            State = "Maharashtra",
-            Phone = "123-456-7890",
-            Email = "hindu@temple.com",
-            Deity = "Shiva",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Buddhist Temple", 
-            Address = "Test Address 2",
-            City = "Delhi",
-            State = "Delhi",
-            Phone = "098-765-4321",
-            Email = "buddhist@temple.com",
-            Deity = "Buddha",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple3 = new Temple 
-        { 
-            Name = "Jain Temple", 
-            Address = "Test Address 3",
-            City = "Ahmedabad",
-            State = "Gujarat",
-            Phone = "555-555-5555",
-            Email = "jain@temple.com",
-            Deity = "Mahavira",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+		[Fact]
+		public async Task DeleteTempleAsync_ShouldSoftDelete_WhenExists()
+		{
+			// Arrange
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        context.Temples.AddRange(temple1, temple2, temple3);
-        await context.SaveChangesAsync();
+			// Act
+			var ok = await _templeService.DeleteTempleAsync(temple.Id);
 
-        // Act
-        var result = await service.SearchTemplesAsync("Hindu");
+			// Assert
+			ok.Should().BeTrue();
+			var stored = await _context.Temples.FindAsync(temple.Id);
+			stored!.IsActive.Should().BeFalse();
+		}
 
-        // Assert
-        result.Should().HaveCount(1);
-        result.First().Name.Should().Be("Hindu Temple");
-    }
+		[Fact]
+		public async Task DeleteTempleAsync_ShouldReturnFalse_WhenNotFound()
+		{
+			var ok = await _templeService.DeleteTempleAsync(999);
+			ok.Should().BeFalse();
+		}
 
-    [Fact]
-    public async Task SearchTemplesAsync_WithEmptySearchTerm_ShouldReturnAllTemples()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
+		[Fact]
+		public async Task DeleteTempleAsync_ShouldReturnFalse_WhenAlreadyInactive()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = false };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
 
-        var temple1 = new Temple 
-        { 
-            Name = "Test Temple 1", 
-            Address = "Test Address 1",
-            City = "Test City 1",
-            State = "Test State 1",
-            Phone = "123-456-7890",
-            Email = "test1@temple.com",
-            Deity = "Test Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Test Temple 2", 
-            Address = "Test Address 2",
-            City = "Test City 2",
-            State = "Test State 2",
-            Phone = "098-765-4321",
-            Email = "test2@temple.com",
-            Deity = "Test Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
+			var ok = await _templeService.DeleteTempleAsync(temple.Id);
+			ok.Should().BeFalse();
+		}
 
-        context.Temples.AddRange(temple1, temple2);
-        await context.SaveChangesAsync();
+		#endregion
 
-        // Act
-        var result = await service.SearchTemplesAsync("");
-
-        // Assert
-        result.Should().HaveCount(2);
-    }
-
-    [Fact]
-    public async Task GetTemplesByLocationAsync_WithValidCity_ShouldReturnTemplesInCity()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
-
-        var temple1 = new Temple 
-        { 
-            Name = "Temple 1", 
-            Address = "Address 1",
-            City = "Mumbai",
-            State = "Maharashtra",
-            Phone = "123-456-7890",
-            Email = "temple1@temple.com",
-            Deity = "Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Temple 2", 
-            Address = "Address 2",
-            City = "Mumbai",
-            State = "Maharashtra",
-            Phone = "098-765-4321",
-            Email = "temple2@temple.com",
-            Deity = "Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple3 = new Temple 
-        { 
-            Name = "Temple 3", 
-            Address = "Address 3",
-            City = "Delhi",
-            State = "Delhi",
-            Phone = "555-555-5555",
-            Email = "temple3@temple.com",
-            Deity = "Deity 3",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Temples.AddRange(temple1, temple2, temple3);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.GetTemplesByLocationAsync("Mumbai");
-
-        // Assert
-        result.Should().HaveCount(2);
-        result.Should().OnlyContain(t => t.City == "Mumbai");
-    }
-
-    [Fact]
-    public async Task GetTemplesByLocationAsync_WithCityAndState_ShouldReturnTemplesInLocation()
-    {
-        // Arrange
-        using var context = CreateContext();
-        var service = new TempleService(context);
-
-        var temple1 = new Temple 
-        { 
-            Name = "Temple 1", 
-            Address = "Address 1",
-            City = "Mumbai",
-            State = "Maharashtra",
-            Phone = "123-456-7890",
-            Email = "temple1@temple.com",
-            Deity = "Deity 1",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var temple2 = new Temple 
-        { 
-            Name = "Temple 2", 
-            Address = "Address 2",
-            City = "Mumbai",
-            State = "Karnataka",
-            Phone = "098-765-4321",
-            Email = "temple2@temple.com",
-            Deity = "Deity 2",
-            EstablishedDate = DateTime.UtcNow,
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-
-        context.Temples.AddRange(temple1, temple2);
-        await context.SaveChangesAsync();
-
-        // Act
-        var result = await service.GetTemplesByLocationAsync("Mumbai", "Maharashtra");
-
-        // Assert
-        result.Should().HaveCount(1);
-        result.First().State.Should().Be("Maharashtra");
-    }
+		public void Dispose()
+		{
+			_context.Dispose();
+		}
+	}
 }

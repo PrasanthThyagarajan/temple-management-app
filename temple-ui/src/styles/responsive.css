@@ -1,0 +1,444 @@
+/* Global Responsive Styles for Temple Management App */
+
+/* Breakpoints */
+/* Mobile: 0-768px */
+/* Tablet: 769px-1024px */
+/* Desktop: 1025px+ */
+
+/* Global Mobile Styles */
+@media (max-width: 768px) {
+  /* Container adjustments */
+  .el-container {
+    min-height: 100vh;
+  }
+  
+  .el-main {
+    padding: 10px !important;
+  }
+  
+  /* Card adjustments */
+  .el-card {
+    margin-bottom: 15px;
+  }
+  
+  .el-card__header {
+    padding: 15px !important;
+  }
+  
+  .el-card__body {
+    padding: 15px !important;
+  }
+  
+  /* Button adjustments */
+  .el-button {
+    font-size: 14px;
+  }
+  
+  .el-button--small {
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+  
+  /* Input adjustments */
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 14px;
+  }
+  
+  /* Table adjustments */
+  .el-table {
+    font-size: 12px;
+  }
+  
+  .el-table th,
+  .el-table td {
+    padding: 8px 4px !important;
+  }
+  
+  /* Pagination adjustments */
+  .el-pagination {
+    font-size: 12px;
+  }
+  
+  .el-pagination .el-pager li {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+  
+  .el-pagination .btn-prev,
+  .el-pagination .btn-next {
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+  
+  /* Dialog adjustments */
+  .el-dialog {
+    margin: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
+  }
+  
+  .el-dialog__header {
+    padding: 15px 20px !important;
+  }
+  
+  .el-dialog__body {
+    padding: 15px 20px !important;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+  
+  .el-dialog__footer {
+    padding: 15px 20px !important;
+  }
+  
+  /* Form adjustments */
+  .el-form-item__label {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .el-form-item__content {
+    line-height: 1.5;
+  }
+  
+  /* Select adjustments */
+  .el-select {
+    width: 100%;
+  }
+  
+  /* Date picker adjustments */
+  .el-date-editor {
+    width: 100% !important;
+  }
+  
+  /* Descriptions adjustments */
+  .el-descriptions__label {
+    font-size: 12px;
+  }
+  
+  .el-descriptions__content {
+    font-size: 12px;
+  }
+}
+
+/* Mobile Small (480px and below) */
+@media (max-width: 480px) {
+  .el-main {
+    padding: 5px !important;
+  }
+  
+  .el-card__header {
+    padding: 10px !important;
+  }
+  
+  .el-card__body {
+    padding: 10px !important;
+  }
+  
+  .el-button {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  
+  .el-button--small {
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+  
+  .el-input__inner,
+  .el-textarea__inner {
+    font-size: 13px;
+  }
+  
+  .el-table {
+    font-size: 11px;
+  }
+  
+  .el-table th,
+  .el-table td {
+    padding: 6px 2px !important;
+  }
+  
+  .el-dialog__header {
+    padding: 10px 15px !important;
+  }
+  
+  .el-dialog__body {
+    padding: 10px 15px !important;
+  }
+  
+  .el-dialog__footer {
+    padding: 10px 15px !important;
+  }
+  
+  .el-form-item__label {
+    font-size: 12px;
+  }
+  
+  .el-pagination {
+    font-size: 11px;
+  }
+  
+  .el-pagination .el-pager li {
+    min-width: 24px;
+    height: 24px;
+    line-height: 24px;
+  }
+  
+  .el-pagination .btn-prev,
+  .el-pagination .btn-next {
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+  }
+}
+
+/* Tablet Styles */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .el-main {
+    padding: 15px !important;
+  }
+  
+  .el-card {
+    margin-bottom: 20px;
+  }
+  
+  .el-button {
+    font-size: 14px;
+  }
+  
+  .el-table {
+    font-size: 13px;
+  }
+  
+  .el-dialog {
+    width: 80% !important;
+    max-width: 800px;
+  }
+}
+
+/* Desktop Large (1200px+) */
+@media (min-width: 1200px) {
+  .el-main {
+    padding: 20px !important;
+  }
+  
+  .el-dialog {
+    width: 50% !important;
+    max-width: 900px;
+  }
+}
+
+/* Utility Classes */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+  
+  .desktop-only {
+    display: none;
+  }
+}
+
+/* Responsive Text */
+.responsive-text {
+  font-size: 16px;
+}
+
+@media (max-width: 768px) {
+  .responsive-text {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-text {
+    font-size: 12px;
+  }
+}
+
+/* Responsive Spacing */
+.responsive-padding {
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .responsive-padding {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-padding {
+    padding: 10px;
+  }
+}
+
+/* Responsive Margins */
+.responsive-margin {
+  margin: 20px 0;
+}
+
+@media (max-width: 768px) {
+  .responsive-margin {
+    margin: 15px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-margin {
+    margin: 10px 0;
+  }
+}
+
+/* Responsive Grid */
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-grid {
+    gap: 10px;
+  }
+}
+
+/* Responsive Flex */
+.responsive-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .responsive-flex {
+    flex-direction: column;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-flex {
+    gap: 10px;
+  }
+}
+
+/* Hide/Show based on screen size */
+.hide-mobile {
+  display: block;
+}
+
+.hide-desktop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+  
+  .hide-desktop {
+    display: block;
+  }
+}
+
+/* Responsive Images */
+.responsive-img {
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+/* Responsive Tables */
+.responsive-table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-table table {
+  min-width: 600px;
+}
+
+@media (max-width: 768px) {
+  .responsive-table table {
+    min-width: 500px;
+  }
+}
+
+/* Single-line cells with ellipsis for all Element Plus tables */
+.el-table th .cell,
+.el-table .cell {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Keep action columns in a single line with scroll if overflow */
+.el-table .action-buttons {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .el-table .action-buttons {
+    overflow-x: auto;
+  }
+}
+
+/* Responsive Forms */
+.responsive-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+  .responsive-form .el-form-item {
+    margin-bottom: 15px;
+  }
+  
+  .responsive-form .el-form-item__label {
+    width: 100px !important;
+    text-align: left !important;
+  }
+  
+  .responsive-form .el-form-item__content {
+    margin-left: 100px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-form .el-form-item {
+    margin-bottom: 10px;
+  }
+  
+  .responsive-form .el-form-item__label {
+    width: 80px !important;
+    font-size: 12px !important;
+  }
+  
+  .responsive-form .el-form-item__content {
+    margin-left: 80px !important;
+  }
+}
