@@ -2,7 +2,7 @@
   <div id="app">
     <el-container>
       <el-header>
-        <div class="header-content">
+        <div class="header-content" :class="{ 'home-header': isHomeRoute }">
           <h1 class="logo">
             <el-icon><HomeFilled /></el-icon>
             <span class="logo-text">Devakaryam</span>
@@ -10,6 +10,7 @@
 
           <!-- Navigation Menu -->
           <el-menu
+            v-if="!isHomeRoute"
             mode="horizontal"
             :router="true"
             :default-active="$route.path"
@@ -50,6 +51,7 @@
                 <span>Temples</span>
               </el-menu-item>
             </el-sub-menu>
+
 
             <!-- Shop -->
             <el-sub-menu index="shop">
@@ -100,8 +102,14 @@ import {
   Collection, 
   ShoppingCart,
   Shop,
-  Setting
+  Setting,
+  Star
 } from '@element-plus/icons-vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+const isHomeRoute = computed(() => route.path === '/')
 </script>
 
 <style scoped>
@@ -124,6 +132,10 @@ import {
   height: 100%;
   padding: 0 20px;
   position: relative;
+}
+
+.home-header {
+  justify-content: center;
 }
 
 .logo {

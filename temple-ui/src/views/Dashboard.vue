@@ -45,7 +45,6 @@
           <template #header>
             <div class="card-header">
               <span>Upcoming Events</span>
-              <el-button type="text" @click="$router.push('/events')">View All</el-button>
             </div>
           </template>
           <div v-if="upcomingEvents.length > 0">
@@ -65,7 +64,6 @@
           <template #header>
             <div class="card-header">
               <span>Recent Products</span>
-              <el-button type="text" @click="$router.push('/products')">View All</el-button>
             </div>
           </template>
           <div v-if="recentProducts.length > 0">
@@ -83,7 +81,6 @@
           <template #header>
             <div class="card-header">
               <span>Recent Sales</span>
-              <el-button type="text" @click="$router.push('/sales')">View All</el-button>
             </div>
           </template>
           <div v-if="recentSales.length > 0">

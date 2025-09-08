@@ -24,6 +24,9 @@ builder.Host.UseSerilog();
 var databaseSettings = builder.Configuration.GetSection(DatabaseSettings.SectionName).Get<DatabaseSettings>();
 builder.Services.Configure<DatabaseSettings>(builder.Configuration.GetSection(DatabaseSettings.SectionName));
 
+// Configure Jyotisham API settings
+builder.Services.Configure<JyotishamApiSettings>(builder.Configuration.GetSection(JyotishamApiSettings.SectionName));
+
 // Register database context factory
 builder.Services.AddScoped<IDbContextFactory, DbContextFactory>();
 
@@ -109,6 +112,9 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPoojaService, PoojaService>();
 builder.Services.AddScoped<IPoojaBookingService, PoojaBookingService>();
+
+// Jyotisham API service
+builder.Services.AddHttpClient<IJyotishamApiService, JyotishamApiService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -1417,6 +1423,63 @@ app.MapDelete("/api/categories/{id}", async (int id, ICategoryService categorySe
     catch (Exception ex)
     {
         Log.Error(ex, "Error deleting category with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// Jyotisham API endpoints
+app.MapPost("/api/panchang", async (PanchangRequestDto request, IJyotishamApiService jyotishamService) =>
+{
+    try
+    {
+        var result = await jyotishamService.GetPanchangAsync(request);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting Panchang data");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/horoscope/daily", async (HoroscopeRequestDto request, IJyotishamApiService jyotishamService) =>
+{
+    try
+    {
+        var result = await jyotishamService.GetDailyHoroscopeAsync(request);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting daily horoscope");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/horoscope/weekly", async (HoroscopeRequestDto request, IJyotishamApiService jyotishamService) =>
+{
+    try
+    {
+        var result = await jyotishamService.GetWeeklyHoroscopeAsync(request);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting weekly horoscope");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/horoscope/monthly", async (HoroscopeRequestDto request, IJyotishamApiService jyotishamService) =>
+{
+    try
+    {
+        var result = await jyotishamService.GetMonthlyHoroscopeAsync(request);
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting monthly horoscope");
         return Results.Problem("Internal server error");
     }
 });

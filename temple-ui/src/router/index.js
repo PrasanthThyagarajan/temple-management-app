@@ -8,6 +8,7 @@ import Events from '../views/Events.vue'
 import Products from '../views/Products.vue'
 import Categories from '../views/Categories.vue'
 import Sales from '../views/Sales.vue'
+import Astrology from '../views/Astrology.vue'
 
 
 const routes = [
@@ -56,6 +57,11 @@ const routes = [
     name: 'Sales',
     component: Sales
   },
+  {
+    path: '/astrology',
+    name: 'Astrology',
+    component: Astrology
+  }
 
 ]
 
