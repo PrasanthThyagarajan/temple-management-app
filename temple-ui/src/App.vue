@@ -29,7 +29,7 @@
             </el-menu-item>
 
             <!-- Administration -->
-            <el-sub-menu index="administration">
+            <el-sub-menu v-if="hasRole('Admin')" index="administration">
               <template #title>
                 <el-icon><Setting /></el-icon>
                 <span>Administration</span>
@@ -50,11 +50,15 @@
                 <el-icon><OfficeBuilding /></el-icon>
                 <span>Temples</span>
               </el-menu-item>
+              <el-menu-item index="/admin/role-permissions">
+                <el-icon><Star /></el-icon>
+                <span>Role Permissions</span>
+              </el-menu-item>
             </el-sub-menu>
 
 
             <!-- Shop -->
-            <el-sub-menu index="shop">
+            <el-sub-menu v-if="hasRole('Admin') || hasRole('Staff')" index="shop">
               <template #title>
                 <el-icon><Shop /></el-icon>
                 <span>Shop</span>
@@ -63,7 +67,7 @@
                 <el-icon><Box /></el-icon>
                 <span>Products</span>
               </el-menu-item>
-              <el-menu-item index="/categories">
+              <el-menu-item v-if="hasRole('Admin')" index="/categories">
                 <el-icon><Collection /></el-icon>
                 <span>Categories</span>
               </el-menu-item>
@@ -72,11 +76,12 @@
                 <span>Sales</span>
               </el-menu-item>
             </el-sub-menu>
-            <el-menu-item index="/temples">
-                <el-icon><OfficeBuilding /></el-icon>
-                <span>Temples</span>
-              </el-menu-item>
           </el-menu>
+
+          <!-- User Profile -->
+          <div class="user-section">
+            <UserProfile />
+          </div>
         </div>
       </el-header>
 
@@ -103,12 +108,16 @@ import {
   ShoppingCart,
   Shop,
   Setting,
-  Star
+  Star,
+  House
 } from '@element-plus/icons-vue'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import UserProfile from './components/UserProfile.vue'
+import { useAuth } from './stores/auth.js'
 
 const route = useRoute()
+const { isAuthenticated, hasRole } = useAuth()
 const isHomeRoute = computed(() => route.path === '/')
 </script>
 
@@ -132,6 +141,12 @@ const isHomeRoute = computed(() => route.path === '/')
   height: 100%;
   padding: 0 20px;
   position: relative;
+}
+
+.user-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }
 
 .home-header {

@@ -16,8 +16,14 @@ namespace TempleApi.Data
         public DbSet<EventRegistration> EventRegistrations { get; set; }
         public DbSet<Service> Services { get; set; }
         
-        // Shop Management entities
+        // User Management entities
         public DbSet<User> Users { get; set; }
+        public DbSet<Role> Roles { get; set; }
+        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<UserRole> UserRoles { get; set; }
+        public DbSet<RolePermission> RolePermissions { get; set; }
+        
+        // Shop Management entities
         public DbSet<Category> Categories { get; set; }
         public DbSet<Product> Products { get; set; }
         public DbSet<Sale> Sales { get; set; }
@@ -37,6 +43,10 @@ namespace TempleApi.Data
             modelBuilder.Entity<EventRegistration>().ToTable("EventRegistrations");
             modelBuilder.Entity<Service>().ToTable("Services");
             modelBuilder.Entity<User>().ToTable("Users");
+            modelBuilder.Entity<Role>().ToTable("Roles");
+            modelBuilder.Entity<Permission>().ToTable("Permissions");
+            modelBuilder.Entity<UserRole>().ToTable("UserRoles");
+            modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
             modelBuilder.Entity<Category>().ToTable("Categories");
             modelBuilder.Entity<Product>().ToTable("Products");
             modelBuilder.Entity<Sale>().ToTable("Sales");
@@ -142,13 +152,68 @@ namespace TempleApi.Data
             // User configuration
             modelBuilder.Entity<User>(entity =>
             {
-                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Phone).HasMaxLength(15);
+                entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
-                entity.Property(e => e.Role).IsRequired();
+                entity.Property(e => e.IsActive).HasDefaultValue(true);
                 
+                entity.HasIndex(e => e.Username).IsUnique();
                 entity.HasIndex(e => e.Email).IsUnique();
+            });
+
+            // Role configuration
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.Property(e => e.RoleName).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(200);
+                
+                entity.HasIndex(e => e.RoleName).IsUnique();
+            });
+
+            // Permission configuration
+            modelBuilder.Entity<Permission>(entity =>
+            {
+                entity.Property(e => e.PermissionName).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Description).HasMaxLength(200);
+                
+                entity.HasIndex(e => e.PermissionName).IsUnique();
+            });
+
+            // UserRole configuration
+            modelBuilder.Entity<UserRole>(entity =>
+            {
+                entity.HasKey(e => e.UserRoleId);
+                
+                entity.HasOne(e => e.User)
+                    .WithMany(e => e.UserRoles)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasOne(e => e.Role)
+                    .WithMany(e => e.UserRoles)
+                    .HasForeignKey(e => e.RoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasIndex(e => new { e.UserId, e.RoleId }).IsUnique();
+            });
+
+            // RolePermission configuration
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.HasKey(e => e.RolePermissionId);
+                
+                entity.HasOne(e => e.Role)
+                    .WithMany(e => e.RolePermissions)
+                    .HasForeignKey(e => e.RoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasOne(e => e.Permission)
+                    .WithMany(e => e.RolePermissions)
+                    .HasForeignKey(e => e.PermissionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                
+                entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
             });
 
             // Category configuration
@@ -191,15 +256,16 @@ namespace TempleApi.Data
                 entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Notes).HasColumnType("TEXT");
                 
-                entity.HasOne(e => e.Customer)
-                    .WithMany(e => e.CustomerSales)
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                // Note: User navigation properties will be added when needed
+                // entity.HasOne(e => e.Customer)
+                //     .WithMany()
+                //     .HasForeignKey(e => e.UserId)
+                //     .OnDelete(DeleteBehavior.Restrict);
                 
-                entity.HasOne(e => e.Staff)
-                    .WithMany(e => e.StaffSales)
-                    .HasForeignKey(e => e.StaffId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                // entity.HasOne(e => e.Staff)
+                //     .WithMany()
+                //     .HasForeignKey(e => e.StaffId)
+                //     .OnDelete(DeleteBehavior.Restrict);
             });
 
             // SaleItem configuration
@@ -240,20 +306,21 @@ namespace TempleApi.Data
                 entity.Property(e => e.Status).IsRequired();
                 entity.Property(e => e.BookingDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 
-                entity.HasOne(e => e.Customer)
-                    .WithMany(e => e.CustomerBookings)
-                    .HasForeignKey(e => e.UserId)
-                    .OnDelete(DeleteBehavior.Restrict);
+                // Note: User navigation properties will be added when needed
+                // entity.HasOne(e => e.Customer)
+                //     .WithMany()
+                //     .HasForeignKey(e => e.UserId)
+                //     .OnDelete(DeleteBehavior.Restrict);
                 
                 entity.HasOne(e => e.Pooja)
                     .WithMany(e => e.Bookings)
                     .HasForeignKey(e => e.PoojaId)
                     .OnDelete(DeleteBehavior.Restrict);
                 
-                entity.HasOne(e => e.Staff)
-                    .WithMany(e => e.StaffBookings)
-                    .HasForeignKey(e => e.StaffId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                // entity.HasOne(e => e.Staff)
+                //     .WithMany()
+                //     .HasForeignKey(e => e.StaffId)
+                //     .OnDelete(DeleteBehavior.SetNull);
             });
         }
 

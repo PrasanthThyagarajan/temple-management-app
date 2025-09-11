@@ -156,9 +156,9 @@ namespace TempleApi.Services
                 StaffId = booking.StaffId,
                 Amount = booking.Amount,
                 Status = booking.Status,
-                CustomerName = booking.Customer?.Name ?? string.Empty,
+                CustomerName = booking.Customer?.FullName ?? string.Empty,
                 PoojaName = booking.Pooja?.Name ?? string.Empty,
-                StaffName = booking.Staff?.Name
+                StaffName = booking.Staff?.FullName
             };
         }
     }

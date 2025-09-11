@@ -1,7 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
 using TempleApi.Repositories.Interfaces;
 using TempleApi.Domain.Entities;
-using TempleApi.Enums;
 
 namespace TempleApi.Repositories
 {
@@ -16,9 +16,17 @@ namespace TempleApi.Repositories
             return await FirstOrDefaultAsync(u => u.Email == email && u.IsActive);
         }
 
-        public async Task<IEnumerable<User>> GetByRoleAsync(UserRole role)
+        public async Task<User?> GetByUsernameAsync(string username)
         {
-            return await FindAsync(u => u.Role == role && u.IsActive);
+            return await FirstOrDefaultAsync(u => u.Username == username && u.IsActive);
+        }
+
+        public async Task<IEnumerable<User>> GetUsersByRoleAsync(string roleName)
+        {
+            return await _context.Users
+                .Where(u => u.IsActive)
+                .Where(u => u.UserRoles.Any(ur => ur.Role.RoleName == roleName))
+                .ToListAsync();
         }
 
         public async Task<bool> ValidateCredentialsAsync(string email, string passwordHash)

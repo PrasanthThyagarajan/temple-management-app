@@ -59,7 +59,7 @@
               <el-button text @click="$router.push('/events')">View Events</el-button>
               <el-button text @click="$router.push('/donations')">Make a Donation</el-button>
               <el-button text @click="$router.push('/products')">Temple Store</el-button>
-              <el-button text @click="showAstrologyModal = true">
+              <el-button text @click="$router.push('/dashboard')">
                 <el-icon><Star /></el-icon>
                 Astrology & Panchang
               </el-button>
@@ -111,71 +111,7 @@
         </el-col>
       </el-row>
     </section>
-    
-    <!-- Astrology Services Section -->
-    <section class="home-section">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-          <el-card shadow="hover" class="astrology-card">
-            <template #header>
-              <div class="card-header">
-                <el-icon><Star /></el-icon>
-                <span>ജ്യോതിഷ്യ സേവനങ്ങൾ</span>
-              </div>
-            </template>
-            <div class="astrology-content">
-              <div class="astrology-image">
-                <div class="astrology-banner-placeholder">
-                  <el-icon size="48"><Star /></el-icon>
-                  <p>ജ്യോതിഷ്യo</p>
-                </div>
-              </div>
-              <div class="astrology-info">
-                <h3>ജാതകം</h3>
-                <p>ജാതകം ഒരാളുടെ ജനനസമയത്ത് ഗ്രഹങ്ങൾ എങ്ങനെ സ്ഥിതി ചെയ്തിരുന്നുവെന്നതിന്റെയും അതിന്റെ സ്വാധീനത്തിന്റെയും രേഖപ്പെടുത്തലാണ്. 
-                  ഭാരതീയ ജ്യോതിഷം പ്രകാരം ഗ്രഹങ്ങൾ, ഉപഗ്രഹങ്ങൾ, ഗ്രഹസ്ഫുടങ്ങൾ എന്നിവ ജീവജാലങ്ങളെ ബാധിക്കുന്നു. അതിനാൽ ഒരു വ്യക്തിയുടെ ജനന തീയതി, 
-                  സമയം, സ്ഥലമേഖല, സ്ഥലം എന്നിവ അടിസ്ഥാനമാക്കി വ്യത്യസ്തമായ ജാതകങ്ങൾ രൂപപ്പെടുന്നു.</p>
-                <div class="astrology-features">
-                  <div class="feature-item">
-                    <el-icon><Calendar /></el-icon>
-                    <span>ദൈനംദിന ജാതകം</span>
-                  </div>
-                  <div class="feature-item">
-                    <el-icon><Star /></el-icon>
-                    <span>ജനന ജാതക വിശകലനം</span>
-                  </div>
-                  <div class="feature-item">
-                    <el-icon><Connection /></el-icon>
-                    <span>പൊരുത്ത പരിശോധന</span>
-                  </div>
-                </div>
-                <el-button type="primary" @click="loadDailyHoroscope" :loading="horoscopeLoading">
-                  ഇന്നത്തെ ഭവിഷ്യവാക്യം കാണുക
-                </el-button>
-              </div>
-            </div>
-          </el-card>
-        </el-col>
 
-        <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-          <el-card shadow="hover" class="auspicious-card">
-            <template #header>
-              <div class="card-header">
-                <el-icon><Timer /></el-icon>
-                <span>ശുഭസമയങ്ങൾ (ഇന്ന്)</span>
-              </div>
-            </template>
-            <ul class="auspicious-list">
-              <li><strong>രാഹു കാലം:</strong> {{ todayRahu }}</li>
-              <li><strong>ഗുളിക കാലം:</strong> {{ todayGulika }}</li>
-              <li v-if="abhijitStart && abhijitEnd"><strong>ശുഭ മുഹൂർത്തം (അഭിജിത്):</strong> {{ abhijitStart }} – {{ abhijitEnd }}</li>
-              <li v-else><em>ശുഭ മുഹൂർത്തം ലോഡ് ചെയ്യുന്നു…</em></li>
-            </ul>
-            <p class="timings-note">കുറിപ്പ്: സൂചനാത്മക സാധാരണ സമയങ്ങൾ. യഥാർത്ഥ സമയം സ്ഥലവും സൂര്യോദയവും അനുസരിച്ച് വ്യത്യാസപ്പെടാം.</p>
-          </el-card>
-        </el-col>
-      </el-row>
-    </section>
 
     <!-- Daily Horoscope Display -->
     <section v-if="dailyHoroscope" class="home-section">
@@ -226,16 +162,6 @@
       </el-card>
     </section>
 
-    <!-- Astrology Modal -->
-    <el-dialog
-      v-model="showAstrologyModal"
-      title="Astrology & Panchang"
-      width="90%"
-      :before-close="handleClose"
-      class="astrology-modal"
-    >
-      <AstrologyModal @close="showAstrologyModal = false" />
-    </el-dialog>
   </div>
   
   
@@ -246,7 +172,6 @@ import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
-import AstrologyModal from '../components/AstrologyModal.vue'
 
 const gallery = ref([
   '/images/image2.jpg',
@@ -255,12 +180,6 @@ const gallery = ref([
   '/images/image8.jpg',
 ])
 
-const showAstrologyModal = ref(false)
-
-const handleClose = (done) => {
-  showAstrologyModal.value = false
-  done()
-}
 
 // Compute today's Rahu Kalam and Gulika Kalam using standard weekday slots
 const weekday = dayjs().day() // 0=Sun ... 6=Sat

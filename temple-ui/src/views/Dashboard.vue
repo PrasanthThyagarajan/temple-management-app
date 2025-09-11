@@ -93,6 +93,40 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- Astrology Section -->
+    <el-row :gutter="20" class="dashboard-content">
+      <el-col :span="24">
+        <div class="astrology-section">
+          <!-- Astrology Header -->
+          <div class="astrology-header">
+            <div class="astrology-banner">
+              <img src="/images/AstrologyHeader.jpg" alt="Astrology & Panchang" class="astrology-header-image" />
+              <div class="astrology-overlay">
+                <div class="astrology-content">
+                  <h2 class="astrology-title">
+                    <el-icon class="astrology-icon"><Star /></el-icon>
+                    Astrology & Panchang
+                  </h2>
+                  <p class="astrology-subtitle">Discover your cosmic destiny with ancient wisdom</p>
+                  <div class="astrology-features">
+                    <span class="feature-tag">Daily Panchang</span>
+                    <span class="feature-tag">Horoscope Predictions</span>
+                    <span class="feature-tag">Auspicious Timings</span>
+                    <span class="feature-tag">Planetary Positions</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Astrology Content -->
+          <el-card class="astrology-card">
+            <AstrologyModal />
+          </el-card>
+        </div>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -100,6 +134,8 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
+import { Star } from '@element-plus/icons-vue'
+import AstrologyModal from '../components/AstrologyModal.vue'
 
 const slides = ref([
   {
@@ -396,6 +432,129 @@ onBeforeUnmount(() => {
 }
 
 
+/* Astrology Section */
+.astrology-section {
+  margin-top: 20px;
+}
+
+.astrology-header {
+  margin-bottom: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.astrology-banner {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+}
+
+.astrology-header-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.astrology-banner:hover .astrology-header-image {
+  transform: scale(1.05);
+}
+
+.astrology-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.85) 0%,
+    rgba(118, 75, 162, 0.85) 50%,
+    rgba(255, 107, 107, 0.8) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+}
+
+.astrology-content {
+  text-align: center;
+  color: white;
+  padding: 20px;
+  max-width: 800px;
+}
+
+.astrology-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin: 0 0 15px 0;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.astrology-icon {
+  font-size: 2.8rem;
+  color: #FFD700;
+  filter: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+  animation: twinkle 2s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+  0% { transform: scale(1) rotate(0deg); }
+  100% { transform: scale(1.1) rotate(5deg); }
+}
+
+.astrology-subtitle {
+  font-size: 1.2rem;
+  margin: 0 0 25px 0;
+  opacity: 0.95;
+  font-weight: 300;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.astrology-features {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.feature-tag {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.feature-tag:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.astrology-card {
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.astrology-card :deep(.el-card__body) {
+  padding: 0;
+}
+
 /* Quick Links */
 .quick-links .links-grid {
   display: grid;
@@ -406,6 +565,67 @@ onBeforeUnmount(() => {
 @media (max-width: 768px) {
   .quick-links .links-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Astrology Header Responsive */
+  .astrology-banner {
+    height: 250px;
+  }
+  
+  .astrology-title {
+    font-size: 2rem;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .astrology-icon {
+    font-size: 2.2rem;
+  }
+  
+  .astrology-subtitle {
+    font-size: 1rem;
+  }
+  
+  .astrology-features {
+    gap: 8px;
+  }
+  
+  .feature-tag {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .astrology-banner {
+    height: 200px;
+  }
+  
+  .astrology-title {
+    font-size: 1.6rem;
+  }
+  
+  .astrology-icon {
+    font-size: 1.8rem;
+  }
+  
+  .astrology-subtitle {
+    font-size: 0.9rem;
+  }
+  
+  .astrology-content {
+    padding: 15px;
+  }
+  
+  .astrology-features {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .feature-tag {
+    width: 100%;
+    max-width: 200px;
+    text-align: center;
   }
 }
 </style>

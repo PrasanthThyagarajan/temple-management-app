@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuth } from '@/stores/auth'
 import Home from '../views/Home.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Temples from '../views/Temples.vue'
@@ -8,7 +9,7 @@ import Events from '../views/Events.vue'
 import Products from '../views/Products.vue'
 import Categories from '../views/Categories.vue'
 import Sales from '../views/Sales.vue'
-import Astrology from '../views/Astrology.vue'
+import RolePermissions from '../views/RolePermissions.vue'
 
 
 const routes = [
@@ -56,11 +57,14 @@ const routes = [
     path: '/sales',
     name: 'Sales',
     component: Sales
-  },
+  }
+
+  ,
   {
-    path: '/astrology',
-    name: 'Astrology',
-    component: Astrology
+    path: '/admin/role-permissions',
+    name: 'RolePermissions',
+    component: RolePermissions,
+    meta: { requiresAdmin: true }
   }
 
 ]
@@ -68,6 +72,14 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+router.beforeEach((to, from, next) => {
+  const { hasRole } = useAuth()
+  if (to.meta?.requiresAdmin && !hasRole('Admin')) {
+    return next('/dashboard')
+  }
+  next()
 })
 
 export default router

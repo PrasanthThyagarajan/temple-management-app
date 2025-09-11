@@ -36,11 +36,12 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var pooja = new Pooja
             {
@@ -55,7 +56,7 @@ namespace TempleApi.Tests
 
             var createBookingDto = new CreatePoojaBookingDto
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = pooja.Id,
                 ScheduledDate = DateTime.UtcNow.AddDays(7)
             };
@@ -65,7 +66,7 @@ namespace TempleApi.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(customer.Id, result.UserId);
+            Assert.Equal(customer.UserId, result.UserId);
             Assert.Equal(pooja.Id, result.PoojaId);
             Assert.Equal(pooja.Price, result.Amount);
             Assert.Equal(BookingStatus.Pending, result.Status);
@@ -101,18 +102,19 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             _context.Users.Add(customer);
             await _context.SaveChangesAsync();
 
             var createBookingDto = new CreatePoojaBookingDto
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = 999, // Non-existent pooja
                 ScheduledDate = DateTime.UtcNow.AddDays(7)
             };
@@ -127,11 +129,12 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var pooja = new Pooja
             {
@@ -146,7 +149,7 @@ namespace TempleApi.Tests
 
             var booking = new PoojaBooking
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = pooja.Id,
                 ScheduledDate = DateTime.UtcNow.AddDays(7),
                 Amount = pooja.Price,
@@ -161,7 +164,7 @@ namespace TempleApi.Tests
             // Assert
             Assert.NotNull(result);
             Assert.Equal(booking.Id, result.Id);
-            Assert.Equal(customer.Name, result.CustomerName);
+            Assert.Equal(customer.FullName, result.CustomerName);
             Assert.Equal(pooja.Name, result.PoojaName);
             Assert.Equal(BookingStatus.Confirmed, result.Status);
         }
@@ -172,11 +175,12 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var pooja = new Pooja
             {
@@ -191,7 +195,7 @@ namespace TempleApi.Tests
 
             var booking = new PoojaBooking
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = pooja.Id,
                 ScheduledDate = DateTime.UtcNow.AddDays(7),
                 Amount = pooja.Price,
@@ -213,19 +217,21 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var staff = new User
             {
-                Name = "Staff",
+                Username = "staff",
                 Email = "staff@example.com",
-                Phone = "9876543210",
-                Role = UserRole.Staff,
-                PasswordHash = "hash"
+                FullName = "Staff",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var pooja = new Pooja
             {
@@ -240,7 +246,7 @@ namespace TempleApi.Tests
 
             var booking = new PoojaBooking
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = pooja.Id,
                 ScheduledDate = DateTime.UtcNow.AddDays(7),
                 Amount = pooja.Price,
@@ -250,11 +256,11 @@ namespace TempleApi.Tests
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _bookingService.AssignStaffToBookingAsync(booking.Id, staff.Id);
+            var result = await _bookingService.AssignStaffToBookingAsync(booking.Id, staff.UserId);
 
             // Assert
-            Assert.Equal(staff.Id, result.StaffId);
-            Assert.Equal(staff.Name, result.StaffName);
+            Assert.Equal(staff.UserId, result.StaffId);
+            Assert.Equal(staff.FullName, result.StaffName);
         }
 
         [Fact]
@@ -263,11 +269,12 @@ namespace TempleApi.Tests
             // Arrange
             var customer = new User
             {
-                Name = "Customer",
+                Username = "customer",
                 Email = "customer@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Customer",
+                PasswordHash = "hash",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             var pooja = new Pooja
             {
@@ -277,7 +284,7 @@ namespace TempleApi.Tests
             };
             var booking = new PoojaBooking
             {
-                UserId = customer.Id,
+                UserId = customer.UserId,
                 PoojaId = pooja.Id,
                 ScheduledDate = DateTime.UtcNow.AddDays(7),
                 Amount = pooja.Price,
@@ -301,16 +308,16 @@ namespace TempleApi.Tests
         [Fact]
         public async Task GetAllBookingsAsync_ShouldReturnOnlyActiveBookings()
         {
-            var user = new User { Name = "U", Email = "u@x", Phone = "1", Role = UserRole.Customer, PasswordHash = "h" };
-            var staff = new User { Name = "S", Email = "s@x", Phone = "2", Role = UserRole.Staff, PasswordHash = "h" };
+            var user = new User { Username = "u", Email = "u@x", FullName = "U", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
+            var staff = new User { Username = "s", Email = "s@x", FullName = "S", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
             var pooja = new Pooja { Name = "P", Description = "D", Price = 100 };
             _context.Users.AddRange(user, staff);
             _context.Poojas.Add(pooja);
             await _context.SaveChangesAsync();
 
             _context.PoojaBookings.AddRange(
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending, IsActive = true },
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(2), Amount = 100, Status = BookingStatus.Confirmed, IsActive = false }
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending, IsActive = true },
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(2), Amount = 100, Status = BookingStatus.Confirmed, IsActive = false }
             );
             await _context.SaveChangesAsync();
 
@@ -322,58 +329,58 @@ namespace TempleApi.Tests
         [Fact]
         public async Task GetBookingsByCustomerAsync_ShouldReturnCustomerBookings()
         {
-            var u1 = new User { Name = "U1", Email = "u1@x", Phone = "1", Role = UserRole.Customer, PasswordHash = "h" };
-            var u2 = new User { Name = "U2", Email = "u2@x", Phone = "2", Role = UserRole.Customer, PasswordHash = "h" };
+            var u1 = new User { Username = "u1", Email = "u1@x", FullName = "U1", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
+            var u2 = new User { Username = "u2", Email = "u2@x", FullName = "U2", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
             var pooja = new Pooja { Name = "P", Description = "D", Price = 100 };
             _context.Users.AddRange(u1, u2);
             _context.Poojas.Add(pooja);
             await _context.SaveChangesAsync();
 
             _context.PoojaBookings.AddRange(
-                new PoojaBooking { UserId = u1.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
-                new PoojaBooking { UserId = u2.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending }
+                new PoojaBooking { UserId = u1.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
+                new PoojaBooking { UserId = u2.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending }
             );
             await _context.SaveChangesAsync();
 
-            var result = await _bookingService.GetBookingsByCustomerAsync(u1.Id);
+            var result = await _bookingService.GetBookingsByCustomerAsync(u1.UserId);
             Assert.Single(result);
-            Assert.All(result, b => Assert.Equal(u1.Id, b.UserId));
+            Assert.All(result, b => Assert.Equal(u1.UserId, b.UserId));
         }
 
         [Fact]
         public async Task GetBookingsByStaffAsync_ShouldReturnStaffBookings()
         {
-            var user = new User { Name = "U", Email = "u@x", Phone = "1", Role = UserRole.Customer, PasswordHash = "h" };
-            var staff1 = new User { Name = "S1", Email = "s1@x", Phone = "2", Role = UserRole.Staff, PasswordHash = "h" };
-            var staff2 = new User { Name = "S2", Email = "s2@x", Phone = "3", Role = UserRole.Staff, PasswordHash = "h" };
+            var user = new User { Username = "u", Email = "u@x", FullName = "U", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
+            var staff1 = new User { Username = "s1", Email = "s1@x", FullName = "S1", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
+            var staff2 = new User { Username = "s2", Email = "s2@x", FullName = "S2", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
             var pooja = new Pooja { Name = "P", Description = "D", Price = 100 };
             _context.Users.AddRange(user, staff1, staff2);
             _context.Poojas.Add(pooja);
             await _context.SaveChangesAsync();
 
             _context.PoojaBookings.AddRange(
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, StaffId = staff1.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, StaffId = staff2.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending }
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, StaffId = staff1.UserId, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, StaffId = staff2.UserId, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending }
             );
             await _context.SaveChangesAsync();
 
-            var result = await _bookingService.GetBookingsByStaffAsync(staff1.Id);
+            var result = await _bookingService.GetBookingsByStaffAsync(staff1.UserId);
             Assert.Single(result);
-            Assert.All(result, b => Assert.Equal(staff1.Id, b.StaffId));
+            Assert.All(result, b => Assert.Equal(staff1.UserId, b.StaffId));
         }
 
         [Fact]
         public async Task GetBookingsByStatusAsync_ShouldReturnOnlySpecifiedStatus()
         {
-            var user = new User { Name = "U", Email = "u@x", Phone = "1", Role = UserRole.Customer, PasswordHash = "h" };
+            var user = new User { Username = "u", Email = "u@x", FullName = "U", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
             var pooja = new Pooja { Name = "P", Description = "D", Price = 100 };
             _context.Users.Add(user);
             _context.Poojas.Add(pooja);
             await _context.SaveChangesAsync();
 
             _context.PoojaBookings.AddRange(
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(2), Amount = 100, Status = BookingStatus.Confirmed }
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(1), Amount = 100, Status = BookingStatus.Pending },
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(2), Amount = 100, Status = BookingStatus.Confirmed }
             );
             await _context.SaveChangesAsync();
 
@@ -385,7 +392,7 @@ namespace TempleApi.Tests
         [Fact]
         public async Task GetBookingsByDateRangeAsync_ShouldReturnWithinRange()
         {
-            var user = new User { Name = "U", Email = "u@x", Phone = "1", Role = UserRole.Customer, PasswordHash = "h" };
+            var user = new User { Username = "u", Email = "u@x", FullName = "U", PasswordHash = "h", CreatedAt = DateTime.UtcNow, IsActive = true };
             var pooja = new Pooja { Name = "P", Description = "D", Price = 100 };
             _context.Users.Add(user);
             _context.Poojas.Add(pooja);
@@ -394,8 +401,8 @@ namespace TempleApi.Tests
             var start = DateTime.UtcNow.AddDays(-1);
             var end = DateTime.UtcNow.AddDays(2);
             _context.PoojaBookings.AddRange(
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow, Amount = 100, Status = BookingStatus.Pending },
-                new PoojaBooking { UserId = user.Id, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(5), Amount = 100, Status = BookingStatus.Pending }
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow, Amount = 100, Status = BookingStatus.Pending },
+                new PoojaBooking { UserId = user.UserId, PoojaId = pooja.Id, ScheduledDate = DateTime.UtcNow.AddDays(5), Amount = 100, Status = BookingStatus.Pending }
             );
             await _context.SaveChangesAsync();
 

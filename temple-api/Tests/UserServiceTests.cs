@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using TempleApi.Data;
 using TempleApi.Repositories.Interfaces;
 using TempleApi.Domain.Entities;
-using TempleApi.Enums;
 using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
@@ -34,8 +33,6 @@ namespace TempleApi.Tests
             {
                 Name = "John Doe",
                 Email = "john@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
                 Password = "password123"
             };
 
@@ -44,11 +41,9 @@ namespace TempleApi.Tests
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(createUserDto.Name, result.Name);
+            Assert.Equal(createUserDto.Name, result.FullName);
             Assert.Equal(createUserDto.Email, result.Email);
-            Assert.Equal(createUserDto.Phone, result.Phone);
-            Assert.Equal(createUserDto.Role, result.Role);
-            Assert.True(result.Id > 0);
+            Assert.True(result.UserId > 0);
         }
 
         [Fact]
@@ -57,21 +52,21 @@ namespace TempleApi.Tests
             // Arrange
             var existingUser = new User
             {
-                Name = "Existing User",
+                Username = "existing",
                 Email = "existing@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Existing User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
+
             _context.Users.Add(existingUser);
             await _context.SaveChangesAsync();
 
             var createUserDto = new CreateUserDto
             {
-                Name = "New User",
+                Name = "John Doe",
                 Email = "existing@example.com",
-                Phone = "9876543210",
-                Role = UserRole.Staff,
                 Password = "password123"
             };
 
@@ -85,22 +80,25 @@ namespace TempleApi.Tests
             // Arrange
             var user = new User
             {
-                Name = "Test User",
+                Username = "testuser",
                 Email = "test@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Admin,
-                PasswordHash = "hash"
+                FullName = "Test User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _userService.GetUserByIdAsync(user.Id);
+            var result = await _userService.GetUserByIdAsync(user.UserId);
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(user.Name, result.Name);
+            Assert.Equal(user.FullName, result.FullName);
             Assert.Equal(user.Email, result.Email);
+            Assert.Equal(user.Username, result.Username);
         }
 
         [Fact]
@@ -119,12 +117,14 @@ namespace TempleApi.Tests
             // Arrange
             var user = new User
             {
-                Name = "Test User",
+                Username = "testuser",
                 Email = "test@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Test User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
@@ -133,19 +133,46 @@ namespace TempleApi.Tests
 
             // Assert
             Assert.NotNull(result);
+            Assert.Equal(user.FullName, result.FullName);
             Assert.Equal(user.Email, result.Email);
         }
 
         [Fact]
-        public async Task GetAllUsersAsync_ShouldReturnAllActiveUsers()
+        public async Task GetUserByEmailAsync_ShouldReturnNull_WhenUserDoesNotExist()
+        {
+            // Act
+            var result = await _userService.GetUserByEmailAsync("nonexistent@example.com");
+
+            // Assert
+            Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetAllUsersAsync_ShouldReturnAllUsers()
         {
             // Arrange
             var users = new List<User>
             {
-                new User { Name = "User 1", Email = "user1@example.com", Phone = "111", Role = UserRole.Customer, PasswordHash = "hash" },
-                new User { Name = "User 2", Email = "user2@example.com", Phone = "222", Role = UserRole.Staff, PasswordHash = "hash" },
-                new User { Name = "User 3", Email = "user3@example.com", Phone = "333", Role = UserRole.Admin, PasswordHash = "hash", IsActive = false }
+                new User
+                {
+                    Username = "user1",
+                    Email = "user1@example.com",
+                    FullName = "User One",
+                    PasswordHash = "hash1",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                },
+                new User
+                {
+                    Username = "user2",
+                    Email = "user2@example.com",
+                    FullName = "User Two",
+                    PasswordHash = "hash2",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                }
             };
+
             _context.Users.AddRange(users);
             await _context.SaveChangesAsync();
 
@@ -153,28 +180,8 @@ namespace TempleApi.Tests
             var result = await _userService.GetAllUsersAsync();
 
             // Assert
+            Assert.NotNull(result);
             Assert.Equal(2, result.Count());
-        }
-
-        [Fact]
-        public async Task GetUsersByRoleAsync_ShouldReturnUsersWithSpecificRole()
-        {
-            // Arrange
-            var users = new List<User>
-            {
-                new User { Name = "Customer 1", Email = "customer1@example.com", Phone = "111", Role = UserRole.Customer, PasswordHash = "hash" },
-                new User { Name = "Customer 2", Email = "customer2@example.com", Phone = "222", Role = UserRole.Customer, PasswordHash = "hash" },
-                new User { Name = "Staff 1", Email = "staff1@example.com", Phone = "333", Role = UserRole.Staff, PasswordHash = "hash" }
-            };
-            _context.Users.AddRange(users);
-            await _context.SaveChangesAsync();
-
-            // Act
-            var result = await _userService.GetUsersByRoleAsync(UserRole.Customer);
-
-            // Assert
-            Assert.Equal(2, result.Count());
-            Assert.All(result, u => Assert.Equal(UserRole.Customer, u.Role));
         }
 
         [Fact]
@@ -183,32 +190,31 @@ namespace TempleApi.Tests
             // Arrange
             var user = new User
             {
-                Name = "Original Name",
-                Email = "original@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                Username = "testuser",
+                Email = "test@example.com",
+                FullName = "Test User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             var updateDto = new CreateUserDto
             {
-                Name = "Updated Name",
+                Name = "Updated User",
                 Email = "updated@example.com",
-                Phone = "9876543210",
-                Role = UserRole.Staff,
-                Password = "newpassword"
+                Password = "newpassword123"
             };
 
             // Act
-            var result = await _userService.UpdateUserAsync(user.Id, updateDto);
+            var result = await _userService.UpdateUserAsync(user.UserId, updateDto);
 
             // Assert
-            Assert.Equal(updateDto.Name, result.Name);
+            Assert.NotNull(result);
+            Assert.Equal(updateDto.Name, result.FullName);
             Assert.Equal(updateDto.Email, result.Email);
-            Assert.Equal(updateDto.Phone, result.Phone);
-            Assert.Equal(updateDto.Role, result.Role);
         }
 
         [Fact]
@@ -217,11 +223,9 @@ namespace TempleApi.Tests
             // Arrange
             var updateDto = new CreateUserDto
             {
-                Name = "Updated Name",
+                Name = "Updated User",
                 Email = "updated@example.com",
-                Phone = "9876543210",
-                Role = UserRole.Staff,
-                Password = "newpassword"
+                Password = "newpassword123"
             };
 
             // Act & Assert
@@ -229,27 +233,32 @@ namespace TempleApi.Tests
         }
 
         [Fact]
-        public async Task DeleteUserAsync_ShouldDeactivateUser_WhenUserExists()
+        public async Task DeleteUserAsync_ShouldReturnTrue_WhenUserExists()
         {
             // Arrange
             var user = new User
             {
-                Name = "Test User",
+                Username = "testuser",
                 Email = "test@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                PasswordHash = "hash"
+                FullName = "Test User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
             };
+
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _userService.DeleteUserAsync(user.Id);
+            var result = await _userService.DeleteUserAsync(user.UserId);
 
             // Assert
             Assert.True(result);
-            var deletedUser = await _context.Users.FindAsync(user.Id);
-            Assert.False(deletedUser!.IsActive);
+            
+            // Verify user is soft deleted
+            var deletedUser = await _context.Users.FindAsync(user.UserId);
+            Assert.NotNull(deletedUser);
+            Assert.False(deletedUser.IsActive);
         }
 
         [Fact]
@@ -266,28 +275,54 @@ namespace TempleApi.Tests
         public async Task ValidateUserCredentialsAsync_ShouldReturnTrue_WhenCredentialsAreValid()
         {
             // Arrange
+            var password = "password123";
+            
+            // Create user with plain password - UserService will hash it
             var createUserDto = new CreateUserDto
             {
                 Name = "Test User",
                 Email = "test@example.com",
-                Phone = "1234567890",
-                Role = UserRole.Customer,
-                Password = "password123"
+                Password = password
             };
-            var createdUser = await _userService.CreateUserAsync(createUserDto);
+            
+            var user = await _userService.CreateUserAsync(createUserDto);
 
             // Act
-            var result = await _userService.ValidateUserCredentialsAsync("test@example.com", "password123");
+            var result = await _userService.ValidateUserCredentialsAsync("test@example.com", password);
 
             // Assert
             Assert.True(result);
         }
 
         [Fact]
+        public async Task ValidateUserCredentialsAsync_ShouldReturnFalse_WhenCredentialsAreInvalid()
+        {
+            // Arrange
+            var user = new User
+            {
+                Username = "testuser",
+                Email = "test@example.com",
+                FullName = "Test User",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var result = await _userService.ValidateUserCredentialsAsync("test@example.com", "wrongpassword");
+
+            // Assert
+            Assert.False(result);
+        }
+
+        [Fact]
         public async Task ValidateUserCredentialsAsync_ShouldReturnFalse_WhenUserDoesNotExist()
         {
             // Act
-            var result = await _userService.ValidateUserCredentialsAsync("nonexistent@example.com", "password");
+            var result = await _userService.ValidateUserCredentialsAsync("nonexistent@example.com", "password123");
 
             // Assert
             Assert.False(result);

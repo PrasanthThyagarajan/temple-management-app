@@ -49,8 +49,8 @@ namespace TempleApi.Tests
         public async Task CreateSaleAsync_ShouldCreateSale_WhenValidData()
         {
             // Arrange
-            var customer = new User { Id = 1, Name = "Customer", Email = "customer@test.com", IsActive = true };
-            var staff = new User { Id = 2, Name = "Staff", Email = "staff@test.com", IsActive = true };
+            var customer = new User { UserId = 1, Username = "customer", FullName = "Customer", Email = "customer@test.com", IsActive = true };
+            var staff = new User { UserId = 2, Username = "staff", FullName = "Staff", Email = "staff@test.com", IsActive = true };
             var product = new Product { Id = 1, Name = "Test Product", Price = 10.00m, Quantity = 100, IsActive = true };
 
             var createSaleDto = new CreateSaleDto
@@ -153,7 +153,7 @@ namespace TempleApi.Tests
         public async Task CreateSaleAsync_ShouldThrowException_WhenStaffNotFound()
         {
             // Arrange
-            var customer = new User { Id = 1, Name = "Customer", Email = "customer@test.com", IsActive = true };
+            var customer = new User { UserId = 1, Username = "customer", FullName = "Customer", Email = "customer@test.com", IsActive = true };
             var createSaleDto = new CreateSaleDto
             {
                 UserId = 1,
@@ -174,8 +174,8 @@ namespace TempleApi.Tests
         public async Task CreateSaleAsync_ShouldThrowException_WhenProductNotAvailable()
         {
             // Arrange
-            var customer = new User { Id = 1, Name = "Customer", Email = "customer@test.com", IsActive = true };
-            var staff = new User { Id = 2, Name = "Staff", Email = "staff@test.com", IsActive = true };
+            var customer = new User { UserId = 1, Username = "customer", FullName = "Customer", Email = "customer@test.com", IsActive = true };
+            var staff = new User { UserId = 2, Username = "staff", FullName = "Staff", Email = "staff@test.com", IsActive = true };
             var createSaleDto = new CreateSaleDto
             {
                 UserId = 1,
@@ -214,8 +214,8 @@ namespace TempleApi.Tests
                 FinalAmount = 18.00m,
                 PaymentMethod = "Cash",
                 IsActive = true,
-                Customer = new User { Id = 1, Name = "Customer" },
-                Staff = new User { Id = 2, Name = "Staff" },
+                Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
+                Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                 SaleItems = new List<SaleItem>
                 {
                     new SaleItem
@@ -270,8 +270,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 20.00m,
                     IsActive = true,
-                    Customer = new User { Id = 1, Name = "Customer 1" },
-                    Staff = new User { Id = 2, Name = "Staff 1" },
+                    Customer = new User { UserId = 1, Username = "customer1", FullName = "Customer 1" },
+                    Staff = new User { UserId = 2, Username = "staff1", FullName = "Staff 1" },
                     SaleItems = new List<SaleItem>()
                 },
                 new Sale
@@ -282,8 +282,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 30.00m,
                     IsActive = true,
-                    Customer = new User { Id = 3, Name = "Customer 2" },
-                    Staff = new User { Id = 2, Name = "Staff 1" },
+                    Customer = new User { UserId = 3, Username = "customer2", FullName = "Customer 2" },
+                    Staff = new User { UserId = 2, Username = "staff1", FullName = "Staff 1" },
                     SaleItems = new List<SaleItem>()
                 }
             };
@@ -312,8 +312,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 20.00m,
                     IsActive = true,
-                    Customer = new User { Id = 1, Name = "Customer" },
-                    Staff = new User { Id = 2, Name = "Staff" },
+                    Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
+                    Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                     SaleItems = new List<SaleItem>()
                 }
             };
@@ -342,8 +342,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 20.00m,
                     IsActive = true,
-                    Customer = new User { Id = 1, Name = "Customer" },
-                    Staff = new User { Id = 2, Name = "Staff" },
+                    Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
+                    Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                     SaleItems = new List<SaleItem>()
                 }
             };
@@ -374,8 +374,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now.AddDays(-3),
                     TotalAmount = 20.00m,
                     IsActive = true,
-                    Customer = new User { Id = 1, Name = "Customer" },
-                    Staff = new User { Id = 2, Name = "Staff" },
+                    Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
+                    Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                     SaleItems = new List<SaleItem>()
                 }
             };
@@ -403,8 +403,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 20.00m,
                     IsActive = true,
-                    Customer = new User { Id = 1, Name = "John Customer" },
-                    Staff = new User { Id = 2, Name = "Staff" },
+                    Customer = new User { UserId = 1, Username = "john", FullName = "John Customer" },
+                    Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                     SaleItems = new List<SaleItem>()
                 },
                 new Sale
@@ -415,8 +415,8 @@ namespace TempleApi.Tests
                     SaleDate = DateTime.Now,
                     TotalAmount = 30.00m,
                     IsActive = true,
-                    Customer = new User { Id = 3, Name = "Jane Customer" },
-                    Staff = new User { Id = 2, Name = "Staff" },
+                    Customer = new User { UserId = 3, Username = "jane", FullName = "Jane Customer" },
+                    Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                     SaleItems = new List<SaleItem>()
                 }
             };
@@ -478,8 +478,8 @@ namespace TempleApi.Tests
                 PaymentMethod = "Card",
                 IsActive = true,
                 Notes = "Updated sale",
-                Customer = new User { Id = 1, Name = "Customer" },
-                Staff = new User { Id = 2, Name = "Staff" },
+                Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
+                Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
                 SaleItems = new List<SaleItem>()
             };
 

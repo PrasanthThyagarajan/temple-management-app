@@ -8,7 +8,7 @@ namespace TempleApi.Services.Interfaces
         Task<UserDto?> GetUserByIdAsync(int id);
         Task<UserDto?> GetUserByEmailAsync(string email);
         Task<IEnumerable<UserDto>> GetAllUsersAsync();
-        Task<IEnumerable<UserDto>> GetUsersByRoleAsync(TempleApi.Enums.UserRole role);
+        Task<IEnumerable<UserDto>> GetUsersByRoleAsync(string roleName);
         Task<UserDto> UpdateUserAsync(int id, CreateUserDto updateUserDto);
         Task<bool> DeleteUserAsync(int id);
         Task<bool> ValidateUserCredentialsAsync(string email, string password);

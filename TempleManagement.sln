@@ -1,0 +1,77 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TempleApi", "temple-api\TempleApi.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TempleApi.Tests", "temple-api\Tests\TempleApi.Tests.csproj", "{6901402A-D0C3-4891-B723-39FC16740E68}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{C7F38B88-D67D-48A0-A74D-FF8ADA0231E0}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Frontend", "Frontend", "{21C2DE27-E58B-463A-ABB6-D9F6D895A2F2}"
+	ProjectSection(SolutionItems) = preProject
+		temple-ui\index.html = temple-ui\index.html
+		temple-ui\package.json = temple-ui\package.json
+		temple-ui\vite.config.js = temple-ui\vite.config.js
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{2A585244-CC5C-4EE2-A90B-E5DCFA86FD1F}"
+	ProjectSection(SolutionItems) = preProject
+		temple-api\README-JyotishamAPI.md = temple-api\README-JyotishamAPI.md
+		temple-api\README.md = temple-api\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Database", "Database", "{D02550F6-79A5-4862-84EB-2F3F457069F6}"
+	ProjectSection(SolutionItems) = preProject
+		temple-api\Migrations\20250903175124_InitialCreate.cs = temple-api\Migrations\20250903175124_InitialCreate.cs
+		temple-api\Migrations\20250903175124_InitialCreate.Designer.cs = temple-api\Migrations\20250903175124_InitialCreate.Designer.cs
+		temple-api\Migrations\TempleDbContextModelSnapshot.cs = temple-api\Migrations\TempleDbContextModelSnapshot.cs
+		temple-api\Database\temple_management.db = temple-api\Database\temple_management.db
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configuration", "Configuration", "{87ACBDCD-6AE5-4F23-A0BC-0D7B2172A74F}"
+	ProjectSection(SolutionItems) = preProject
+		temple-api\appsettings.Development.json = temple-api\appsettings.Development.json
+		temple-api\appsettings.json = temple-api\appsettings.json
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Logs", "Logs", "{923897C0-0136-4EDF-96C5-083A6F4722D7}"
+	ProjectSection(SolutionItems) = preProject
+		temple-api\logs\temple-api-20250831.txt = temple-api\logs\temple-api-20250831.txt
+		temple-api\logs\temple-api-20250901.txt = temple-api\logs\temple-api-20250901.txt
+		temple-api\logs\temple-api-20250903.txt = temple-api\logs\temple-api-20250903.txt
+		temple-api\logs\temple-api-20250903_001.txt = temple-api\logs\temple-api-20250903_001.txt
+		temple-api\logs\temple-api-20250903_002.txt = temple-api\logs\temple-api-20250903_002.txt
+		temple-api\logs\temple-api-20250903_003.txt = temple-api\logs\temple-api-20250903_003.txt
+		temple-api\logs\temple-api-20250906.txt = temple-api\logs\temple-api-20250906.txt
+		temple-api\logs\temple-api-20250907.txt = temple-api\logs\temple-api-20250907.txt
+		temple-api\logs\temple-api-20250908.txt = temple-api\logs\temple-api-20250908.txt
+		temple-api\logs\temple-api-20250908_001.txt = temple-api\logs\temple-api-20250908_001.txt
+		temple-api\logs\temple-api-20250909.txt = temple-api\logs\temple-api-20250909.txt
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6901402A-D0C3-4891-B723-39FC16740E68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6901402A-D0C3-4891-B723-39FC16740E68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6901402A-D0C3-4891-B723-39FC16740E68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6901402A-D0C3-4891-B723-39FC16740E68}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {12345678-1234-5678-9ABC-DEF123456789}
+	EndGlobalSection
+EndGlobal

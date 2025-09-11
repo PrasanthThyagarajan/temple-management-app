@@ -28,11 +28,11 @@ namespace TempleApi.Services
 
             var user = new User
             {
-                Name = createUserDto.Name,
+                Username = createUserDto.Email.Split('@')[0], // Use email prefix as username
                 Email = createUserDto.Email,
-                Phone = createUserDto.Phone,
-                Role = createUserDto.Role,
-                PasswordHash = HashPassword(createUserDto.Password)
+                FullName = createUserDto.Name,
+                PasswordHash = HashPassword(createUserDto.Password),
+                IsActive = true
             };
 
             await _userRepository.AddAsync(user);
@@ -61,9 +61,9 @@ namespace TempleApi.Services
             return users.Select(MapToDto);
         }
 
-        public async Task<IEnumerable<UserDto>> GetUsersByRoleAsync(TempleApi.Enums.UserRole role)
+        public async Task<IEnumerable<UserDto>> GetUsersByRoleAsync(string roleName)
         {
-            var users = await _userRepository.GetByRoleAsync(role);
+            var users = await _userRepository.GetUsersByRoleAsync(roleName);
             
             return users.Select(MapToDto);
         }
@@ -71,26 +71,24 @@ namespace TempleApi.Services
         public async Task<UserDto> UpdateUserAsync(int id, CreateUserDto updateUserDto)
         {
             var user = await _userRepository.GetByIdAsync(id);
+            
             if (user == null)
             {
-                throw new KeyNotFoundException("User not found.");
+                throw new KeyNotFoundException($"User with ID {id} not found.");
             }
 
-            // Check if email is being changed and if it already exists
+            // Check if email is being changed and if new email already exists
             if (user.Email != updateUserDto.Email)
             {
                 var existingUser = await _userRepository.GetByEmailAsync(updateUserDto.Email);
-                
-                if (existingUser != null && existingUser.Id != id)
+                if (existingUser != null)
                 {
                     throw new InvalidOperationException("User with this email already exists.");
                 }
             }
 
-            user.Name = updateUserDto.Name;
             user.Email = updateUserDto.Email;
-            user.Phone = updateUserDto.Phone;
-            user.Role = updateUserDto.Role;
+            user.FullName = updateUserDto.Name;
             
             // Only update password if provided
             if (!string.IsNullOrEmpty(updateUserDto.Password))
@@ -99,12 +97,24 @@ namespace TempleApi.Services
             }
 
             await _userRepository.UpdateAsync(user);
+
             return MapToDto(user);
         }
 
         public async Task<bool> DeleteUserAsync(int id)
         {
-            return await _userRepository.SoftDeleteAsync(id);
+            var user = await _userRepository.GetByIdAsync(id);
+            
+            if (user == null)
+            {
+                return false;
+            }
+
+            // Soft delete by setting IsActive to false
+            user.IsActive = false;
+            await _userRepository.UpdateAsync(user);
+
+            return true;
         }
 
         public async Task<bool> ValidateUserCredentialsAsync(string email, string password)
@@ -116,33 +126,58 @@ namespace TempleApi.Services
                 return false;
             }
 
-            var hashedPassword = HashPassword(password);
-            return hashedPassword == user.PasswordHash;
+            return VerifyPassword(password, user.PasswordHash);
         }
 
-        private static string HashPassword(string password)
+        private string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
-            return Convert.ToBase64String(hashedBytes);
+            using var rng = RandomNumberGenerator.Create();
+            var saltBytes = new byte[32];
+            rng.GetBytes(saltBytes);
+
+            using var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);
+            var hashBytes = pbkdf2.GetBytes(32);
+
+            var hashWithSalt = new byte[64];
+            Array.Copy(saltBytes, 0, hashWithSalt, 0, 32);
+            Array.Copy(hashBytes, 0, hashWithSalt, 32, 32);
+
+            return Convert.ToBase64String(hashWithSalt);
         }
 
-        private static bool VerifyPassword(string password, string hash)
+        private bool VerifyPassword(string password, string storedHash)
         {
-            var hashedPassword = HashPassword(password);
-            return hashedPassword == hash;
+            try
+            {
+                var hashWithSalt = Convert.FromBase64String(storedHash);
+                var saltBytes = new byte[32];
+                var hashBytes = new byte[32];
+
+                Array.Copy(hashWithSalt, 0, saltBytes, 0, 32);
+                Array.Copy(hashWithSalt, 32, hashBytes, 0, 32);
+
+                using var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);
+                var computedHash = pbkdf2.GetBytes(32);
+
+                return computedHash.SequenceEqual(hashBytes);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
-        private static UserDto MapToDto(User user)
+        private UserDto MapToDto(User user)
         {
             return new UserDto
             {
-                Id = user.Id,
-                Name = user.Name,
+                UserId = user.UserId,
+                Username = user.Username,
                 Email = user.Email,
-                Phone = user.Phone,
-                Role = user.Role,
-                CreatedAt = user.CreatedAt
+                FullName = user.FullName,
+                IsActive = user.IsActive,
+                CreatedAt = user.CreatedAt,
+                Roles = new List<string>() // Will be populated by AuthService
             };
         }
     }

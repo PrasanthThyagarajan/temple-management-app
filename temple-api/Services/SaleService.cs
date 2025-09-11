@@ -139,8 +139,8 @@ namespace TempleApi.Services
         {
             var sales = await _saleRepository.GetAllWithDetailsAsync();
             var filteredSales = sales.Where(s => 
-                s.Customer?.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
-                s.Staff?.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
+                s.Customer?.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                s.Staff?.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) == true);
             
             return filteredSales.Select(MapToDto);
         }
@@ -219,9 +219,9 @@ namespace TempleApi.Services
                 FinalAmount = sale.FinalAmount,
                 PaymentMethod = sale.PaymentMethod,
                 Status = sale.IsActive ? "Completed" : "Pending",
-                CustomerName = sale.Customer?.Name ?? string.Empty,
-                CustomerPhone = sale.Customer?.Phone ?? string.Empty,
-                StaffName = sale.Staff?.Name ?? string.Empty,
+                CustomerName = sale.Customer?.FullName ?? string.Empty,
+                CustomerPhone = sale.Customer?.Email ?? string.Empty, // Using email as contact
+                StaffName = sale.Staff?.FullName ?? string.Empty,
                 Notes = sale.Notes,
                 SaleItems = sale.SaleItems.Select(si => new SaleItemDto
                 {

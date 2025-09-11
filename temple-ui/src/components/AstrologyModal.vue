@@ -21,8 +21,6 @@
       <el-col :span="24">
         <!-- Panchang Form -->
         <el-form v-if="serviceForm.serviceType === 'panchang'" :model="panchangForm" label-width="120px">
-          <el-row :gutter="20">
-            <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="Date & Time">
                 <el-date-picker
                   v-model="panchangForm.dateTime"
@@ -33,46 +31,24 @@
                   value-format="YYYY-MM-DD HH:mm:ss"
                 />
               </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="Latitude">
-                <el-input-number
-                  v-model="panchangForm.latitude"
-                  :precision="6"
-                  :step="0.000001"
-                  :min="-90"
-                  :max="90"
-                  placeholder="Enter latitude"
+          
+          <el-form-item label="Timezone">
+            <el-select v-model="panchangForm.timezone" placeholder="Select timezone" style="width: 100%" @change="onTimezoneChange">
+              <el-option label="Asia/Kolkata (Thiruvananthapuram)" value="Asia/Kolkata" />
+              <el-option label="Asia/Dubai (Dubai)" value="Asia/Dubai" />
+              <el-option label="America/New_York (New York)" value="America/New_York" />
+              <el-option label="Europe/London (London)" value="Europe/London" />
+            </el-select>
+              </el-form-item>
+          
+          <el-form-item label="Location">
+            <el-input
+              :value="getLocationDisplay()"
+              readonly
                   style="width: 100%"
                 />
               </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="Longitude">
-                <el-input-number
-                  v-model="panchangForm.longitude"
-                  :precision="6"
-                  :step="0.000001"
-                  :min="-180"
-                  :max="180"
-                  placeholder="Enter longitude"
-                  style="width: 100%"
-                />
-              </el-form-item>
-            </el-col>
-          </el-row>
-          <el-row>
-            <el-col :span="24">
-              <el-form-item label="Timezone">
-                <el-select v-model="panchangForm.timezone" placeholder="Select timezone" style="width: 100%">
-                  <el-option label="Asia/Kolkata" value="Asia/Kolkata" />
-                  <el-option label="Asia/Dubai" value="Asia/Dubai" />
-                  <el-option label="America/New_York" value="America/New_York" />
-                  <el-option label="Europe/London" value="Europe/London" />
-                </el-select>
-              </el-form-item>
-            </el-col>
-          </el-row>
+          
           <el-form-item>
             <el-button type="primary" @click="fetchPanchang" :loading="loading">
               Get Panchang
@@ -82,8 +58,6 @@
 
         <!-- Horoscope Form -->
         <el-form v-else :model="horoscopeForm" label-width="120px">
-          <el-row :gutter="20">
-            <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="Date & Time">
                 <el-date-picker
                   v-model="horoscopeForm.dateTime"
@@ -94,8 +68,7 @@
                   value-format="YYYY-MM-DD HH:mm:ss"
                 />
               </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
+          
               <el-form-item label="Zodiac Sign">
                 <el-select v-model="horoscopeForm.zodiacSign" placeholder="Select zodiac sign" style="width: 100%">
                   <el-option label="Aries" value="aries" />
@@ -112,8 +85,7 @@
                   <el-option label="Pisces" value="pisces" />
                 </el-select>
               </el-form-item>
-            </el-col>
-            <el-col :xs="24" :sm="12" :md="8">
+          
               <el-form-item label="Language">
                 <el-select v-model="horoscopeForm.language" placeholder="Select language" style="width: 100%">
                   <el-option label="English" value="en" />
@@ -123,8 +95,7 @@
                   <el-option label="Telugu" value="te" />
                 </el-select>
               </el-form-item>
-            </el-col>
-          </el-row>
+          
           <el-form-item>
             <el-button type="primary" @click="fetchHoroscope" :loading="loading">
               Get {{ getHoroscopeTypeText() }}
@@ -141,35 +112,45 @@
         <div v-if="serviceForm.serviceType === 'panchang' && result.data">
           <div class="panchang-results">
             <h3>Panchang for {{ formatDateTime(result.data.date) }}</h3>
-            <el-row :gutter="20">
-              <el-col :xs="24" :sm="12" :md="6">
-                <div class="info-card">
-                  <h4>Tithi</h4>
-                  <p>{{ result.data.tithi }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="6">
-                <div class="info-card">
-                  <h4>Nakshatra</h4>
-                  <p>{{ result.data.nakshatra }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="6">
-                <div class="info-card">
-                  <h4>Day</h4>
-                  <p>{{ result.data.day }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="6">
-                <div class="info-card">
-                  <h4>Sunrise</h4>
-                  <p>{{ result.data.sunrise }}</p>
-                </div>
-              </el-col>
-            </el-row>
             
-            <el-row :gutter="20" v-if="result.data.auspiciousTimings && result.data.auspiciousTimings.length > 0">
-              <el-col :span="24">
+            <div class="panchang-details">
+              <div class="detail-item">
+                <span class="detail-label">Tithi:</span>
+                <span class="detail-value">{{ result.data.tithi }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Nakshatra:</span>
+                <span class="detail-value">{{ result.data.nakshatra }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Day:</span>
+                <span class="detail-value">{{ result.data.day }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Sunrise:</span>
+                <span class="detail-value">{{ result.data.sunrise }}</span>
+              </div>
+              
+              <div class="detail-item" v-if="result.data.sunset">
+                <span class="detail-label">Sunset:</span>
+                <span class="detail-value">{{ result.data.sunset }}</span>
+                </div>
+              
+              <div class="detail-item" v-if="result.data.moonrise">
+                <span class="detail-label">Moonrise:</span>
+                <span class="detail-value">{{ result.data.moonrise }}</span>
+                </div>
+              
+              <div class="detail-item" v-if="result.data.moonset">
+                <span class="detail-label">Moonset:</span>
+                <span class="detail-value">{{ result.data.moonset }}</span>
+                </div>
+                </div>
+            
+            <div v-if="result.data.auspiciousTimings && result.data.auspiciousTimings.length > 0" class="auspicious-timings">
                 <h4>Auspicious Timings</h4>
                 <el-table :data="result.data.auspiciousTimings" stripe>
                   <el-table-column prop="name" label="Name" />
@@ -177,8 +158,7 @@
                   <el-table-column prop="endTime" label="End Time" />
                   <el-table-column prop="description" label="Description" />
                 </el-table>
-              </el-col>
-            </el-row>
+            </div>
           </div>
         </div>
 
@@ -186,47 +166,38 @@
         <div v-else-if="result.data">
           <div class="horoscope-results">
             <h3>{{ getHoroscopeTypeText() }} for {{ result.data.zodiacSign }}</h3>
-            <el-row :gutter="20">
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>General Prediction</h4>
-                  <p>{{ result.data.prediction }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>Love</h4>
-                  <p>{{ result.data.love }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>Career</h4>
-                  <p>{{ result.data.career }}</p>
-                </div>
-              </el-col>
-            </el-row>
             
-            <el-row :gutter="20">
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>Health</h4>
-                  <p>{{ result.data.health }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>Finance</h4>
-                  <p>{{ result.data.finance }}</p>
-                </div>
-              </el-col>
-              <el-col :xs="24" :sm="12" :md="8">
-                <div class="prediction-card">
-                  <h4>Lucky Number</h4>
-                  <p>{{ result.data.luckyNumber }}</p>
-                </div>
-              </el-col>
-            </el-row>
+            <div class="horoscope-details">
+              <div class="detail-item">
+                <span class="detail-label">General Prediction:</span>
+                <span class="detail-value">{{ result.data.prediction }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Love:</span>
+                <span class="detail-value">{{ result.data.love }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Career:</span>
+                <span class="detail-value">{{ result.data.career }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Health:</span>
+                <span class="detail-value">{{ result.data.health }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Finance:</span>
+                <span class="detail-value">{{ result.data.finance }}</span>
+              </div>
+              
+              <div class="detail-item">
+                <span class="detail-label">Lucky Number:</span>
+                <span class="detail-value">{{ result.data.luckyNumber }}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -266,10 +237,18 @@ const serviceForm = reactive({
 
 const panchangForm = reactive({
   dateTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-  latitude: 10.8505, // Default to Kerala coordinates
-  longitude: 76.2711,
+  latitude: 8.5241, // Thiruvananthapuram coordinates
+  longitude: 76.9361,
   timezone: 'Asia/Kolkata'
 })
+
+// Timezone to coordinates mapping
+const timezoneCoordinates = {
+  'Asia/Kolkata': { lat: 8.5241, lng: 76.9361, city: 'Thiruvananthapuram' },
+  'Asia/Dubai': { lat: 25.2048, lng: 55.2708, city: 'Dubai' },
+  'America/New_York': { lat: 40.7128, lng: -74.0060, city: 'New York' },
+  'Europe/London': { lat: 51.5074, lng: -0.1278, city: 'London' }
+}
 
 const horoscopeForm = reactive({
   dateTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
@@ -284,6 +263,22 @@ const result = ref(null)
 // Methods
 const onServiceChange = () => {
   result.value = null
+}
+
+const onTimezoneChange = (timezone) => {
+  if (timezoneCoordinates[timezone]) {
+    const coords = timezoneCoordinates[timezone]
+    panchangForm.latitude = coords.lat
+    panchangForm.longitude = coords.lng
+  }
+}
+
+const getLocationDisplay = () => {
+  const coords = timezoneCoordinates[panchangForm.timezone]
+  if (coords) {
+    return `${coords.city} (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`
+  }
+  return 'Select a timezone'
 }
 
 const getHoroscopeTypeText = () => {
@@ -395,12 +390,40 @@ const clearResults = () => {
 <style scoped>
 .astrology-modal {
   max-width: 100%;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f2ff 100%);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
 }
 
 .service-selection,
 .input-form,
 .results {
   margin-bottom: 20px;
+}
+
+/* Enhanced form styling */
+.service-selection .el-form-item {
+  background: rgba(255, 255, 255, 0.8);
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.input-form .el-form {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.input-form .el-form-item {
+  margin-bottom: 20px;
+}
+
+.input-form .el-form-item:last-child {
+  margin-bottom: 0;
 }
 
 .info-card,
@@ -426,6 +449,52 @@ const clearResults = () => {
   color: #606266;
   font-size: 12px;
   line-height: 1.4;
+}
+
+/* Detail items styling */
+.panchang-details,
+.horoscope-details {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #303133;
+  min-width: 140px;
+  margin-right: 15px;
+}
+
+.detail-value {
+  color: #606266;
+  flex: 1;
+  text-align: right;
+  line-height: 1.4;
+}
+
+.auspicious-timings {
+  margin-top: 20px;
+}
+
+.auspicious-timings h4 {
+  margin: 0 0 15px 0;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .panchang-results h3,
@@ -471,6 +540,29 @@ const clearResults = () => {
   .panchang-results h3,
   .horoscope-results h3 {
     font-size: 16px;
+  }
+  
+  .panchang-details,
+  .horoscope-details {
+    padding: 15px;
+  }
+  
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px 0;
+  }
+  
+  .detail-label {
+    min-width: auto;
+    margin-right: 0;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+  
+  .detail-value {
+    text-align: left;
+    font-size: 13px;
   }
 }
 </style>
