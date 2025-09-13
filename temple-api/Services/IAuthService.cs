@@ -11,5 +11,6 @@ namespace TempleApi.Services
         Task<List<string>> GetUserPermissionsAsync(int userId);
         Task<bool> ValidateTokenAsync(string token);
         Task<UserDto?> GetUserFromTokenAsync(string token);
+        Task<bool> VerifyAsync(string code);
     }
 }

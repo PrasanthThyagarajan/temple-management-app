@@ -127,6 +127,20 @@
         </div>
       </el-col>
     </el-row>
+
+    <!-- Administration: Role Permissions -->
+    <el-row :gutter="20" class="dashboard-content">
+      <el-col :span="24">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <span>Role Permissions</span>
+            </div>
+          </template>
+          <RolePermissions />
+        </el-card>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
@@ -136,6 +150,7 @@ import axios from 'axios'
 import dayjs from 'dayjs'
 import { Star } from '@element-plus/icons-vue'
 import AstrologyModal from '../components/AstrologyModal.vue'
+import RolePermissions from '../components/RolePermissions.vue'
 
 const slides = ref([
   {

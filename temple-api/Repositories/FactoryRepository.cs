@@ -20,7 +20,7 @@ namespace TempleApi.Repositories
             return await context.Set<T>().FindAsync(id);
         }
 
-        public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object?>>[] includes)
         {
             using var context = _contextFactory.CreateTempleDbContext();
             var query = context.Set<T>().AsQueryable();
@@ -39,7 +39,7 @@ namespace TempleApi.Repositories
             return await context.Set<T>().ToListAsync();
         }
 
-        public virtual async Task<IEnumerable<T>> GetAllAsync(params Expression<Func<T, object>>[] includes)
+        public virtual async Task<IEnumerable<T>> GetAllAsync(params Expression<Func<T, object?>>[] includes)
         {
             using var context = _contextFactory.CreateTempleDbContext();
             var query = context.Set<T>().AsQueryable();
@@ -58,7 +58,7 @@ namespace TempleApi.Repositories
             return await context.Set<T>().Where(predicate).ToListAsync();
         }
 
-        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object?>>[] includes)
         {
             using var context = _contextFactory.CreateTempleDbContext();
             var query = context.Set<T>().AsQueryable();
@@ -77,7 +77,7 @@ namespace TempleApi.Repositories
             return await context.Set<T>().FirstOrDefaultAsync(predicate);
         }
 
-        public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object?>>[] includes)
         {
             using var context = _contextFactory.CreateTempleDbContext();
             var query = context.Set<T>().AsQueryable();

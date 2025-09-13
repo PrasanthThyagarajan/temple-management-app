@@ -21,7 +21,7 @@ namespace TempleApi.Repositories
             return await _dbSet.FindAsync(id);
         }
 
-        public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<T?> GetByIdAsync(int id, params Expression<Func<T, object?>>[] includes)
         {
             var query = _dbSet.AsQueryable();
             
@@ -46,7 +46,7 @@ namespace TempleApi.Repositories
             return await _dbSet.ToListAsync();
         }
 
-        public virtual async Task<IEnumerable<T>> GetAllAsync(params Expression<Func<T, object>>[] includes)
+        public virtual async Task<IEnumerable<T>> GetAllAsync(params Expression<Func<T, object?>>[] includes)
         {
             var query = _dbSet.AsQueryable();
             
@@ -71,7 +71,7 @@ namespace TempleApi.Repositories
             return await _dbSet.Where(predicate).ToListAsync();
         }
 
-        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object?>>[] includes)
         {
             var query = _dbSet.AsQueryable();
             
@@ -88,7 +88,7 @@ namespace TempleApi.Repositories
             return await _dbSet.FirstOrDefaultAsync(predicate);
         }
 
-        public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object>>[] includes)
+        public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object?>>[] includes)
         {
             var query = _dbSet.AsQueryable();
             

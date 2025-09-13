@@ -2,12 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TempleApi.Models.DTOs
 {
-    public class RegisterRequest
+    public class RegisterUserDto
     {
-        [Required]
-        [MaxLength(50)]
-        public string Username { get; set; } = string.Empty;
-
         [Required]
         [EmailAddress]
         [MaxLength(30)]
@@ -15,14 +11,10 @@ namespace TempleApi.Models.DTOs
 
         [Required]
         [MaxLength(100)]
-        public string FullName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
 
         [Required]
         [MinLength(6)]
         public string Password { get; set; } = string.Empty;
-
-        [Required]
-        [Compare("Password")]
-        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

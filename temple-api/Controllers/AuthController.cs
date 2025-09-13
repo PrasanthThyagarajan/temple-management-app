@@ -52,6 +52,22 @@ namespace TempleApi.Controllers
             }
         }
 
+        [HttpGet("verify")]
+        public async Task<ActionResult> Verify([FromQuery] string code)
+        {
+            try
+            {
+                var ok = await _authService.VerifyAsync(code);
+                if (!ok) return BadRequest("Invalid or expired verification code");
+                return Ok(new { message = "Account verified successfully" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in verify endpoint");
+                return StatusCode(500, "An internal error occurred");
+            }
+        }
+
         [HttpPost("register")]
         public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
         {

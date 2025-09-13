@@ -4,6 +4,7 @@ using TempleApi.Models.DTOs;
 using TempleApi.Services.Interfaces;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace TempleApi.Services
 {
@@ -57,15 +58,16 @@ namespace TempleApi.Services
         public async Task<IEnumerable<UserDto>> GetAllUsersAsync()
         {
             var users = await _userRepository.GetAllAsync();
-            
-            return users.Select(MapToDto);
+            // Materialize to list to avoid deferred execution logging like SelectListIterator
+            var userList = users.ToList();
+            return userList.Select(MapToDto).ToList();
         }
 
         public async Task<IEnumerable<UserDto>> GetUsersByRoleAsync(string roleName)
         {
             var users = await _userRepository.GetUsersByRoleAsync(roleName);
-            
-            return users.Select(MapToDto);
+            var userList = users.ToList();
+            return userList.Select(MapToDto).ToList();
         }
 
         public async Task<UserDto> UpdateUserAsync(int id, CreateUserDto updateUserDto)
@@ -129,6 +131,43 @@ namespace TempleApi.Services
             return VerifyPassword(password, user.PasswordHash);
         }
 
+        public async Task<UserDto> RegisterUserAsync(RegisterUserDto registerUserDto)
+        {
+            // Validate email format and length
+            if (!IsValidEmail(registerUserDto.Email) || registerUserDto.Email.Length > 30)
+            {
+                throw new ArgumentException("Invalid email format or length.");
+            }
+
+            // Check if user with email already exists
+            var existingUser = await _userRepository.GetByEmailAsync(registerUserDto.Email);
+            if (existingUser != null)
+            {
+                throw new InvalidOperationException("User with this email already exists.");
+            }
+
+            // Create user entity
+            var user = new User
+            {
+                Username = registerUserDto.Email.Split('@')[0],
+                Email = registerUserDto.Email,
+                FullName = registerUserDto.Name,
+                PasswordHash = HashPassword(registerUserDto.Password),
+                IsActive = false, // Inactive until email verification
+                IsVerified = false, // New field for email verification
+                VerificationCode = GenerateVerificationCode(),
+                CreatedAt = DateTime.UtcNow
+            };
+
+            // Save user to database
+            await _userRepository.AddAsync(user);
+
+            // Send verification email
+            SendVerificationEmail(user.Email, user.VerificationCode);
+
+            return MapToDto(user);
+        }
+
         private string HashPassword(string password)
         {
             using var rng = RandomNumberGenerator.Create();
@@ -165,6 +204,26 @@ namespace TempleApi.Services
             {
                 return false;
             }
+        }
+
+        private bool IsValidEmail(string email)
+        {
+            var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+            return emailRegex.IsMatch(email);
+        }
+
+        private string GenerateVerificationCode()
+        {
+            using var rng = RandomNumberGenerator.Create();
+            var bytes = new byte[16];
+            rng.GetBytes(bytes);
+            return Convert.ToBase64String(bytes);
+        }
+
+        private void SendVerificationEmail(string email, string verificationCode)
+        {
+            // Logic to send email using configured SMTP settings
+            // Use email: pallipurammutharamman@gmail.com, password: AmmanShakhi@2025
         }
 
         private UserDto MapToDto(User user)

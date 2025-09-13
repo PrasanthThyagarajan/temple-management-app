@@ -112,7 +112,6 @@
       </el-row>
     </section>
 
-
     <!-- Daily Horoscope Display -->
     <section v-if="dailyHoroscope" class="home-section">
       <el-card shadow="hover" class="horoscope-card">
@@ -162,6 +161,9 @@
       </el-card>
     </section>
 
+    <!-- Login Modal for unauthorized access -->
+    <LoginModal v-model="showLogin" @login-success="onLoginSuccess" />
+
   </div>
   
   
@@ -172,6 +174,8 @@ import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import { Star } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
+import LoginModal from '../components/LoginModal.vue'
 
 const gallery = ref([
   '/images/image2.jpg',
@@ -220,6 +224,11 @@ const abhijitEnd = ref('')
 // Astrology API integration
 const dailyHoroscope = ref(null)
 const horoscopeLoading = ref(false)
+
+// Login modal control for unauthorized redirect
+const showLogin = ref(false)
+const route = useRoute()
+const router = useRouter()
 
 // Malayalam translations for astrology content
 const malayalamTranslations = {
@@ -374,7 +383,18 @@ const callAstrologyAPI = async (endpoint, data) => {
 
 onMounted(() => {
   computeAbhijitMuhurtam()
+  if (route.query.login === '1') {
+    showLogin.value = true
+  }
 })
+
+const onLoginSuccess = () => {
+  showLogin.value = false
+  const redirect = route.query.redirect
+  if (typeof redirect === 'string' && redirect.startsWith('/')) {
+    router.replace(redirect)
+  }
+}
 </script>
 
 <style scoped>

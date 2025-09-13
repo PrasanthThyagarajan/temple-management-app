@@ -27,6 +27,11 @@ namespace TempleApi.Domain.Entities
 
         public new bool IsActive { get; set; } = true;
 
+        public bool IsVerified { get; set; } = false;
+
+        [MaxLength(100)]
+        public string VerificationCode { get; set; } = string.Empty;
+
         // Navigation properties
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
     }

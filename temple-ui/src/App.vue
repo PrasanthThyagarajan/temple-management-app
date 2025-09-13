@@ -14,6 +14,7 @@
             mode="horizontal"
             :router="true"
             :default-active="$route.path"
+            :ellipsis="false"
             class="nav-menu"
           >
             <!-- Home -->
@@ -28,11 +29,11 @@
               <span>Dashboard</span>
             </el-menu-item>
 
-            <!-- Administration -->
-            <el-sub-menu v-if="hasRole('Admin')" index="administration">
+            <!-- Management (new main menu) -->
+            <el-sub-menu v-if="hasRole('Admin') || hasRole('Staff')" index="management">
               <template #title>
-                <el-icon><Setting /></el-icon>
-                <span>Administration</span>
+                <el-icon><Collection /></el-icon>
+                <span>Management</span>
               </template>
               <el-menu-item index="/devotees">
                 <el-icon><User /></el-icon>
@@ -46,9 +47,29 @@
                 <el-icon><Calendar /></el-icon>
                 <span>Events</span>
               </el-menu-item>
+            </el-sub-menu>
+
+            <!-- Administration -->
+            <el-sub-menu v-if="hasRole('Admin')" index="administration">
+              <template #title>
+                <el-icon><Setting /></el-icon>
+                <span>Administration</span>
+              </template>
               <el-menu-item index="/temples">
                 <el-icon><OfficeBuilding /></el-icon>
                 <span>Temples</span>
+              </el-menu-item>
+              <el-menu-item index="/admin/users">
+                <el-icon><User /></el-icon>
+                <span>Users</span>
+              </el-menu-item>
+              <el-menu-item index="/roles">
+                <el-icon><Star /></el-icon>
+                <span>Roles</span>
+              </el-menu-item>
+              <el-menu-item index="/user-roles">
+                <el-icon><Star /></el-icon>
+                <span>User Roles</span>
               </el-menu-item>
               <el-menu-item index="/admin/role-permissions">
                 <el-icon><Star /></el-icon>
@@ -57,8 +78,8 @@
             </el-sub-menu>
 
 
-            <!-- Shop -->
-            <el-sub-menu v-if="hasRole('Admin') || hasRole('Staff')" index="shop">
+            <!-- Shop (moved to main header, as submenu group) -->
+            <el-sub-menu v-if="hasRole('Admin') || hasRole('Staff')" index="main-shop">
               <template #title>
                 <el-icon><Shop /></el-icon>
                 <span>Shop</span>
@@ -181,8 +202,8 @@ const isHomeRoute = computed(() => route.path === '/')
 
 
 /* Menu item styling */
-.nav-menu .el-menu-item {
-  color: white;
+.nav-menu :deep(.el-menu-item) {
+  color: #ffffff !important; /* not selected */
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -191,23 +212,36 @@ const isHomeRoute = computed(() => route.path === '/')
   white-space: nowrap;
 }
 
-.nav-menu .el-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+.nav-menu :deep(.el-menu-item:hover) {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
-.nav-menu .el-menu-item.is-active {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: white;
+.nav-menu :deep(.el-menu-item.is-active) {
+  background-color: transparent;
+  color: #d32f2f !important; /* selected red */
+  border-bottom: 2px solid #d32f2f;
 }
 
-.nav-menu .el-sub-menu .el-sub-menu__title {
-  color: white;
+.nav-menu :deep(.el-sub-menu > .el-sub-menu__title) {
+  color: #ffffff !important; /* not selected */
   font-weight: 500;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 0 12px;
   white-space: nowrap;
+}
+.nav-menu :deep(.el-sub-menu > .el-sub-menu__title .el-icon),
+.nav-menu :deep(.el-sub-menu > .el-sub-menu__title .el-sub-menu__icon-arrow) {
+  color: #ffffff !important;
+}
+.nav-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title .el-icon),
+.nav-menu :deep(.el-sub-menu.is-active > .el-sub-menu__title .el-sub-menu__icon-arrow) {
+  color: #d32f2f !important;
+}
+
+.nav-menu .el-sub-menu.is-active > .el-sub-menu__title {
+  color: #d32f2f; /* selected red */
 }
 
 .nav-menu .el-sub-menu .el-sub-menu__title:hover {
@@ -222,7 +256,7 @@ const isHomeRoute = computed(() => route.path === '/')
 }
 
 .nav-menu .el-sub-menu .el-menu .el-menu-item {
-  color: white;
+  color: #ffffff !important; /* make submenu font white */
   font-weight: 500;
   padding: 0 20px;
   height: 40px;
@@ -231,4 +265,5 @@ const isHomeRoute = computed(() => route.path === '/')
   align-items: center;
   gap: 10px;
 }
+.nav-menu .el-sub-menu .el-menu .el-menu-item .el-icon { color: #ffffff !important; }
 </style>

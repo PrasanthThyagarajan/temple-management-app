@@ -44,15 +44,8 @@ namespace TempleApi.Services
                     },
                     new Role
                     {
-                        RoleName = "Staff",
-                        Description = "Temple Staff with limited administrative access",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    },
-                    new Role
-                    {
-                        RoleName = "User",
-                        Description = "Regular user with basic access",
+                        RoleName = "General",
+                        Description = "General user with basic access",
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     }
@@ -69,6 +62,8 @@ namespace TempleApi.Services
             {
                 var permissions = new List<Permission>
                 {
+                    // Admin Console composite permission
+                    new Permission { PermissionName = "UserRoleConfiguration", Description = "Access to user/role/permission admin" },
                     // User Management
                     new Permission { PermissionName = "users.view", Description = "View users" },
                     new Permission { PermissionName = "users.create", Description = "Create users" },
@@ -140,8 +135,7 @@ namespace TempleApi.Services
             if (!await _context.RolePermissions.AnyAsync())
             {
                 var adminRole = await _context.Roles.FirstAsync(r => r.RoleName == "Admin");
-                var staffRole = await _context.Roles.FirstAsync(r => r.RoleName == "Staff");
-                var userRole = await _context.Roles.FirstAsync(r => r.RoleName == "User");
+                var generalRole = await _context.Roles.FirstAsync(r => r.RoleName == "General");
 
                 var allPermissions = await _context.Permissions.ToListAsync();
 
@@ -159,40 +153,18 @@ namespace TempleApi.Services
                     });
                 }
 
-                // Staff gets limited permissions
-                var staffPermissions = allPermissions.Where(p => 
-                    p.PermissionName.Contains("view") ||
-                    p.PermissionName.Contains("create") ||
-                    p.PermissionName.Contains("edit") ||
-                    p.PermissionName.StartsWith("sales.") ||
-                    p.PermissionName.StartsWith("bookings.") ||
-                    p.PermissionName.StartsWith("devotees.") ||
-                    p.PermissionName.StartsWith("donations.")
-                ).ToList();
-
-                foreach (var permission in staffPermissions)
-                {
-                    rolePermissions.Add(new RolePermission
-                    {
-                        RoleId = staffRole.RoleId,
-                        PermissionId = permission.PermissionId,
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    });
-                }
-
-                // User gets basic view permissions
-                var userPermissions = allPermissions.Where(p => 
+                // General gets basic view permissions and create for bookings/donations
+                var generalPermissions = allPermissions.Where(p => 
                     p.PermissionName.Contains("view") ||
                     p.PermissionName.StartsWith("bookings.create") ||
                     p.PermissionName.StartsWith("donations.create")
                 ).ToList();
 
-                foreach (var permission in userPermissions)
+                foreach (var permission in generalPermissions)
                 {
                     rolePermissions.Add(new RolePermission
                     {
-                        RoleId = userRole.RoleId,
+                        RoleId = generalRole.RoleId,
                         PermissionId = permission.PermissionId,
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true

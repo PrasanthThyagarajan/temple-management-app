@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -12,6 +14,7 @@ using TempleApi.Models.DTOs;
 using TempleApi.Configuration;
 using TempleApi.Enums;
 using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -102,6 +105,11 @@ builder.Services.AddScoped<IRepository<SaleItem>, TempleApi.Repositories.Reposit
 builder.Services.AddScoped<IRepository<Pooja>, TempleApi.Repositories.Repository<Pooja>>();
 builder.Services.AddScoped<IPoojaBookingRepository, TempleApi.Repositories.PoojaBookingRepository>();
 
+// Role & Permission management repositories
+builder.Services.AddScoped<IRoleRepository, TempleApi.Repositories.RoleRepository>();
+builder.Services.AddScoped<IRoleService, RoleService>();
+builder.Services.AddScoped<IUserRoleService, UserRoleService>();
+
 // Register services
 builder.Services.AddScoped<ITempleService, TempleService>();
 builder.Services.AddScoped<IDevoteeService, DevoteeService>();
@@ -158,10 +166,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("UserRoleConfiguration", policy =>
+    {
+        policy.RequireAssertion(context =>
+            context.User.IsInRole("Admin") ||
+            context.User.HasClaim("permission", "UserRoleConfiguration")
+        );
+    });
 });
 
-// Add Controllers
-builder.Services.AddControllers();
+// Add Controllers with JSON options to prevent reference loops
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 // Add Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -191,7 +210,9 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        if (databaseSettings?.EnableMigrations == true)
+        var hasAnyMigrations = context.Database.GetMigrations().Any();
+
+        if (databaseSettings?.EnableMigrations == true && hasAnyMigrations)
         {
             logger.LogInformation("Applying database migrations for provider: {Provider}", provider);
             context.Database.Migrate();
@@ -202,6 +223,40 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("Ensuring database exists for provider: {Provider}", provider);
             context.Database.EnsureCreated();
             logger.LogInformation("Database ensured successfully");
+
+            try
+            {
+                var databaseCreator = (IRelationalDatabaseCreator)context.Database.GetService<IDatabaseCreator>();
+
+                if (!databaseCreator.Exists())
+                {
+                    databaseCreator.Create();
+                    logger.LogInformation("Database created successfully");
+                }
+
+                // Some providers may not implement HasTables; guard via try/catch
+                var relationalCreator = databaseCreator as RelationalDatabaseCreator;
+                var hasTables = false;
+                try
+                {
+                    hasTables = relationalCreator != null && relationalCreator.HasTables();
+                }
+                catch
+                {
+                    // ignore
+                }
+
+                if (!hasTables)
+                {
+                    databaseCreator.CreateTables();
+                    logger.LogInformation("Database tables created successfully");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Tables may already exist; log at debug level
+                logger.LogDebug(ex, "CreateTables skipped or failed (may already exist)");
+            }
         }
         
         // Seed initial data
@@ -697,13 +752,7 @@ app.MapGet("/api/events/search/{searchTerm}", async (string searchTerm, IEventSe
 });
 
 // Role & Permission management endpoints
-app.MapGet("/api/roles", async (TempleDbContext db) =>
-{
-    var roles = await db.Roles
-        .Select(r => new { r.RoleId, r.RoleName, r.Description })
-        .ToListAsync();
-    return Results.Ok(roles);
-}).RequireAuthorization("AdminOnly");
+// NOTE: GET /api/roles is handled by RoleController. Avoid duplicating here to prevent ambiguous route.
 
 app.MapGet("/api/permissions", async (TempleDbContext db) =>
 {
@@ -711,7 +760,7 @@ app.MapGet("/api/permissions", async (TempleDbContext db) =>
         .Select(p => new { p.PermissionId, p.PermissionName, p.Description })
         .ToListAsync();
     return Results.Ok(permissions);
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapGet("/api/roles/{roleId}/permissions", async (int roleId, TempleDbContext db) =>
 {
@@ -724,13 +773,15 @@ app.MapGet("/api/roles/{roleId}/permissions", async (int roleId, TempleDbContext
         .ToListAsync();
 
     return Results.Ok(new { roleId, permissionIds });
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapPost("/api/roles/{roleId}/permissions", async (int roleId, UpdateRolePermissionsDto request, TempleDbContext db) =>
 {
     if (roleId != request.RoleId) return Results.BadRequest("RoleId mismatch");
     var role = await db.Roles.FindAsync(roleId);
     if (role == null) return Results.NotFound("Role not found");
+    if (string.Equals(role.RoleName, "Admin", StringComparison.OrdinalIgnoreCase))
+        return Results.BadRequest("Admin role permissions cannot be modified.");
 
     var validPermissionIds = await db.Permissions
         .Where(p => request.PermissionIds.Contains(p.PermissionId))
@@ -763,7 +814,7 @@ app.MapPost("/api/roles/{roleId}/permissions", async (int roleId, UpdateRolePerm
         Log.Error(ex, "Error updating permissions for role {RoleId}", roleId);
         return Results.Problem("Failed to update role permissions");
     }
-}).RequireAuthorization("AdminOnly");
+}).RequireAuthorization("UserRoleConfiguration");
 
 // User endpoints
 app.MapGet("/api/users", async (IUserService userService) =>
@@ -778,7 +829,7 @@ app.MapGet("/api/users", async (IUserService userService) =>
         Log.Error(ex, "Error getting all users");
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapGet("/api/users/{id}", async (int id, IUserService userService) =>
 {
@@ -795,7 +846,7 @@ app.MapGet("/api/users/{id}", async (int id, IUserService userService) =>
         Log.Error(ex, "Error getting user with id {Id}", id);
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapGet("/api/users/email/{email}", async (string email, IUserService userService) =>
 {
@@ -812,7 +863,7 @@ app.MapGet("/api/users/email/{email}", async (string email, IUserService userSer
         Log.Error(ex, "Error getting user with email {Email}", email);
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapGet("/api/users/role/{role}", async (TempleApi.Enums.UserRole role, IUserService userService) =>
 {
@@ -826,7 +877,7 @@ app.MapGet("/api/users/role/{role}", async (TempleApi.Enums.UserRole role, IUser
         Log.Error(ex, "Error getting users by role {Role}", role);
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapPost("/api/users", async (CreateUserDto createDto, IUserService userService) =>
 {
@@ -840,7 +891,7 @@ app.MapPost("/api/users", async (CreateUserDto createDto, IUserService userServi
         Log.Error(ex, "Error creating user");
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapPut("/api/users/{id}", async (int id, CreateUserDto updateDto, IUserService userService) =>
 {
@@ -858,7 +909,7 @@ app.MapPut("/api/users/{id}", async (int id, CreateUserDto updateDto, IUserServi
         Log.Error(ex, "Error updating user with id {Id}", id);
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapDelete("/api/users/{id}", async (int id, IUserService userService) =>
 {
@@ -875,7 +926,7 @@ app.MapDelete("/api/users/{id}", async (int id, IUserService userService) =>
         Log.Error(ex, "Error deleting user with id {Id}", id);
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.MapPost("/api/users/validate", async (LoginRequest request, IUserService userService) =>
 {
@@ -889,7 +940,7 @@ app.MapPost("/api/users/validate", async (LoginRequest request, IUserService use
         Log.Error(ex, "Error validating user credentials");
         return Results.Problem("Internal server error");
     }
-});
+}).RequireAuthorization("UserRoleConfiguration");
 
 // Product endpoints
 app.MapGet("/api/products", async (IProductService productService) =>
@@ -1615,5 +1666,15 @@ app.MapGet("/api/database/info", (IOptions<DatabaseSettings> dbSettings) =>
         commandTimeout = settings.CommandTimeout
     });
 });
+
+// App pages config endpoint
+app.MapGet("/api/config/pages", (IConfiguration config) =>
+{
+    var pages = config.GetSection("App:Pages").GetChildren()
+        .Select(s => new { key = s["key"], name = s["name"] })
+        .Where(p => !string.IsNullOrWhiteSpace(p.key) && !string.IsNullOrWhiteSpace(p.name))
+        .ToList();
+    return Results.Ok(pages);
+}).RequireAuthorization("UserRoleConfiguration");
 
 app.Run();

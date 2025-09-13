@@ -36,12 +36,12 @@
               clearable
               @change="handleCategoryFilter"
             >
-              <el-option label="Puja Items" value="Puja Items" />
-              <el-option label="Books" value="Books" />
-              <el-option label="Clothing" value="Clothing" />
-              <el-option label="Jewelry" value="Jewelry" />
-              <el-option label="Food Items" value="Food Items" />
-              <el-option label="Other" value="Other" />
+              <el-option
+                v-for="cat in categories"
+                :key="cat.id"
+                :label="cat.name"
+                :value="cat.id"
+              />
             </el-select>
           </el-col>
           <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
@@ -139,7 +139,7 @@
               </div>
               <div class="product-info">
                 <h4>{{ product.name }}</h4>
-                <p class="product-category">{{ product.category }}</p>
+                <p class="product-category">{{ product.category || product.categoryNavigation?.name }}</p>
                 <p class="product-price">₹{{ product.price.toLocaleString() }}</p>
                 <el-tag :type="getStatusTagType(product.status)" size="small">
                   {{ product.status }}
@@ -161,7 +161,11 @@
           @row-click="handleRowClick"
         >
           <el-table-column prop="name" label="Product Name" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="category" label="Category" width="120" show-overflow-tooltip />
+          <el-table-column prop="category" label="Category" width="120" show-overflow-tooltip>
+            <template #default="scope">
+              {{ scope.row.category || scope.row.categoryNavigation?.name }}
+            </template>
+          </el-table-column>
           <el-table-column prop="price" label="Price" width="100">
             <template #default="scope">
               ₹{{ scope.row.price.toLocaleString() }}
@@ -375,7 +379,7 @@ const categories = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
-const categoryFilter = ref('')
+const categoryFilter = ref(null)
 const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -482,7 +486,16 @@ const searchProducts = async (term) => {
 
 const handleCategoryFilter = () => {
   if (categoryFilter.value) {
-    products.value = products.value.filter(product => product.category === categoryFilter.value)
+    // Prefer filtering by CategoryId when available; fallback to Category name
+    const selected = categoryFilter.value
+    products.value = products.value.filter(product => {
+      if (product.categoryId != null) return product.categoryId === selected
+      if (product.category) {
+        const match = categories.value.find(c => c.id === selected)
+        return match ? product.category === match.name : false
+      }
+      return false
+    })
     totalProducts.value = products.value.length
   } else {
     loadProducts()

@@ -79,60 +79,76 @@ namespace TempleApi.Services
         {
             try
             {
-                // Check if username or email already exists
-                if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+                // Enforce: username must be email and <= 30 chars
+                if (string.IsNullOrWhiteSpace(request.Email) || request.Email.Length > 30)
                 {
-                    return new AuthResponse
-                    {
-                        Success = false,
-                        Message = "Username already exists"
-                    };
+                    return new AuthResponse { Success = false, Message = "Email must be <= 30 characters" };
                 }
 
+                // Normalize username as email
+                var username = request.Email.Trim();
+
+                // Check duplicates
+                if (await _context.Users.AnyAsync(u => u.Username == username))
+                {
+                    return new AuthResponse { Success = false, Message = "Username already exists" };
+                }
                 if (await _context.Users.AnyAsync(u => u.Email == request.Email))
                 {
-                    return new AuthResponse
-                    {
-                        Success = false,
-                        Message = "Email already exists"
-                    };
+                    return new AuthResponse { Success = false, Message = "Email already exists" };
                 }
 
-                // Create new user
+                // Create new user (inactive until email verification)
+                var verificationCode = Guid.NewGuid().ToString("N");
                 var user = new Domain.Entities.User
                 {
-                    Username = request.Username,
+                    Username = username,
                     Email = request.Email,
                     FullName = request.FullName,
                     PasswordHash = HashPassword(request.Password),
-                    IsActive = true
+                    IsActive = false,
+                    IsVerified = false,
+                    VerificationCode = verificationCode
                 };
 
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
-                // Assign default role (User)
-                var defaultRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "User");
+                // Assign default role (General)
+                var defaultRole = await _context.Roles.FirstOrDefaultAsync(r => r.RoleName == "General");
                 if (defaultRole != null)
                 {
                     var userRole = new Domain.Entities.UserRole
                     {
                         UserId = user.UserId,
-                        RoleId = defaultRole.RoleId
+                        RoleId = defaultRole.RoleId,
+                        CreatedAt = DateTime.UtcNow,
+                        IsActive = true
                     };
                     _context.UserRoles.Add(userRole);
                     await _context.SaveChangesAsync();
                 }
 
-                var roles = await GetUserRolesAsync(user.UserId);
-                var permissions = await GetUserPermissionsAsync(user.UserId);
-                var token = GenerateJwtToken(user, roles, permissions);
+                // Send verification email
+                try
+                {
+                    var baseUrl = _configuration["App:BaseUrl"] ?? string.Empty;
+                    var verifyUrl = string.IsNullOrWhiteSpace(baseUrl)
+                        ? $"/api/auth/verify?code={verificationCode}"
+                        : $"{baseUrl.TrimEnd('/')}/verify?code={verificationCode}";
+                    var emailSvc = new EmailService(_configuration, _logger);
+                    await emailSvc.SendAsync(user.Email, "Verify your account", $"Please verify your account by clicking: {verifyUrl}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send verification email to {Email}", user.Email);
+                }
 
                 return new AuthResponse
                 {
                     Success = true,
-                    Message = "Registration successful",
-                    Token = token,
+                    Message = "Registration successful. Please check your email to verify your account.",
+                    Token = string.Empty,
                     User = new UserDto
                     {
                         UserId = user.UserId,
@@ -141,10 +157,10 @@ namespace TempleApi.Services
                         FullName = user.FullName,
                         IsActive = user.IsActive,
                         CreatedAt = user.CreatedAt,
-                        Roles = roles
+                        Roles = new List<string> { "General" }
                     },
-                    Roles = roles,
-                    Permissions = permissions
+                    Roles = new List<string> { "General" },
+                    Permissions = new List<string>()
                 };
             }
             catch (Exception ex)
@@ -156,6 +172,19 @@ namespace TempleApi.Services
                     Message = "An error occurred during registration"
                 };
             }
+        }
+
+        public async Task<bool> VerifyAsync(string code)
+        {
+            if (string.IsNullOrWhiteSpace(code)) return false;
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.VerificationCode == code && !u.IsVerified);
+            if (user == null) return false;
+            user.IsVerified = true;
+            user.IsActive = true;
+            user.VerificationCode = string.Empty;
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<UserDto?> GetUserByIdAsync(int userId)
@@ -203,7 +232,7 @@ namespace TempleApi.Services
                 .ToListAsync();
         }
 
-        public async Task<bool> ValidateTokenAsync(string token)
+        public Task<bool> ValidateTokenAsync(string token)
         {
             try
             {
@@ -222,11 +251,11 @@ namespace TempleApi.Services
                     ClockSkew = TimeSpan.Zero
                 }, out SecurityToken validatedToken);
 
-                return true;
+                return Task.FromResult(true);
             }
             catch
             {
-                return false;
+                return Task.FromResult(false);
             }
         }
 
