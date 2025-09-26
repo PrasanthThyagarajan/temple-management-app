@@ -10,6 +10,8 @@ namespace TempleApi.Domain.Entities
         public decimal FinalAmount { get; set; }
         public string PaymentMethod { get; set; } = "Cash";
         public string Notes { get; set; } = string.Empty;
+        public int? EventId { get; set; }
+        public virtual Event? Event { get; set; }
 
         // Navigation properties
         public virtual User Customer { get; set; } = null!;

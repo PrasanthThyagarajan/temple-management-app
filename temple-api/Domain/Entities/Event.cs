@@ -4,7 +4,7 @@ namespace TempleApi.Domain.Entities
 {
     public class Event : BaseEntity
     {
-        public int TempleId { get; set; }
+        public int? AreaId { get; set; }
         
         [Required]
         [MaxLength(200)]
@@ -20,12 +20,10 @@ namespace TempleApi.Domain.Entities
         [Required]
         public DateTime EndDate { get; set; }
         
-        [Required]
-        [MaxLength(100)]
-        public string EventType { get; set; } = string.Empty;
+        public int EventTypeId { get; set; }
         
         [MaxLength(50)]
-        public string Status { get; set; } = "Scheduled";
+        public string Status { get; set; } = string.Empty;
         
         [MaxLength(200)]
         public string Location { get; set; } = string.Empty;
@@ -43,8 +41,11 @@ namespace TempleApi.Domain.Entities
         
         public decimal? EntryFee { get; set; }
         
+        public bool IsApprovalNeeded { get; set; } = false;
+        
         // Navigation properties
-        public virtual Temple Temple { get; set; } = null!;
+        public virtual Area? Area { get; set; }
+        public virtual EventType EventType { get; set; } = null!;
         public virtual ICollection<EventRegistration> Registrations { get; set; } = new List<EventRegistration>();
     }
 }

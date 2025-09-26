@@ -5,7 +5,31 @@
       <div class="hero-overlay">
         <h1>Welcome to Devakaryam</h1>
         <p>Temple information, events, and services for devotees and visitors</p>
-        <p><a id="dashboard-link" href="/dashboard">Dashboard</a></p>
+        <div class="hero-actions">
+          <!-- Show Dashboard button when user is authenticated -->
+          <template v-if="isAuthenticated">
+            <el-button type="primary" size="large" @click="$router.push('/dashboard')">
+              <el-icon><DataBoard /></el-icon>
+              Dashboard
+            </el-button>
+            <el-button type="success" size="large" @click="$router.push('/profile')">
+              <el-icon><User /></el-icon>
+              My Profile
+            </el-button>
+          </template>
+          
+          <!-- Show Login and Register buttons when user is not authenticated -->
+          <template v-else>
+            <el-button type="primary" size="large" @click="showLogin = true">
+              <el-icon><User /></el-icon>
+              Login
+            </el-button>
+            <el-button type="success" size="large" @click="$router.push('/register')">
+              <el-icon><EditPen /></el-icon>
+              Register
+            </el-button>
+          </template>
+        </div>
       </div>
     </section>
 
@@ -147,13 +171,13 @@
             width="100%"
             height="320"
             style="border:0;"
-            allowfullscreen=""
+            allowFullScreen
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>
         <div class="map-actions">
-          <el-button type="primary" @click="window.open(mapsLink, '_blank')">
+          <el-button type="primary" @click="() => window.open(mapsLink, '_blank')">
             <el-icon><Location /></el-icon>
             <span>Open in Google Maps</span>
           </el-button>
@@ -173,9 +197,10 @@
 import { ref, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
-import { Star } from '@element-plus/icons-vue'
+import { Star, User, EditPen, Location, DataBoard } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import LoginModal from '../components/LoginModal.vue'
+import { useAuth } from '../stores/auth.js'
 
 const gallery = ref([
   '/images/image2.jpg',
@@ -229,6 +254,7 @@ const horoscopeLoading = ref(false)
 const showLogin = ref(false)
 const route = useRoute()
 const router = useRouter()
+const { isAuthenticated, user, refreshAuthState } = useAuth()
 
 // Malayalam translations for astrology content
 const malayalamTranslations = {
@@ -390,6 +416,8 @@ onMounted(() => {
 
 const onLoginSuccess = () => {
   showLogin.value = false
+  // Refresh auth state to update the buttons immediately
+  refreshAuthState()
   const redirect = route.query.redirect
   if (typeof redirect === 'string' && redirect.startsWith('/')) {
     router.replace(redirect)

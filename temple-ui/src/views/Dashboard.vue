@@ -22,6 +22,9 @@
     </el-row>
 
 
+    <!-- Error Alert -->
+    <el-alert v-if="error" :title="error" type="error" show-icon style="margin-bottom: 20px" />
+
     <el-row :gutter="20" class="dashboard-content">
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
         <el-card class="temple-info">
@@ -41,7 +44,7 @@
       </el-col>
       
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card class="upcoming-events">
+        <el-card class="upcoming-events" v-loading="loading">
           <template #header>
             <div class="card-header">
               <span>Upcoming Events</span>
@@ -50,7 +53,7 @@
           <div v-if="upcomingEvents.length > 0">
             <div v-for="event in upcomingEvents" :key="event.id" class="event-item">
               <h4>{{ event.name }}</h4>
-              <p>{{ formatDate(event.startDate) }} - {{ event.eventType }}</p>
+              <p>{{ formatDate(event.startDate) }} - {{ event.eventType?.name || '—' }}</p>
             </div>
           </div>
           <el-empty v-else description="No upcoming events" />
@@ -60,7 +63,7 @@
 
     <el-row :gutter="20" class="dashboard-content">
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card class="recent-products">
+        <el-card class="recent-products" v-loading="loading">
           <template #header>
             <div class="card-header">
               <span>Recent Products</span>
@@ -77,7 +80,7 @@
       </el-col>
       
       <el-col :xs="24" :sm="24" :md="12" :lg="12" :xl="12">
-        <el-card class="recent-sales">
+        <el-card class="recent-sales" v-loading="loading">
           <template #header>
             <div class="card-header">
               <span>Recent Sales</span>
@@ -128,29 +131,17 @@
       </el-col>
     </el-row>
 
-    <!-- Administration: Role Permissions -->
-    <el-row :gutter="20" class="dashboard-content">
-      <el-col :span="24">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>Role Permissions</span>
-            </div>
-          </template>
-          <RolePermissions />
-        </el-card>
-      </el-col>
-    </el-row>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 import { Star } from '@element-plus/icons-vue'
 import AstrologyModal from '../components/AstrologyModal.vue'
 import RolePermissions from '../components/RolePermissions.vue'
+import { useAuth } from '../stores/auth.js'
 
 const slides = ref([
   {
@@ -219,29 +210,51 @@ const updateCarouselHeight = () => {
 const upcomingEvents = ref([])
 const recentProducts = ref([])
 const recentSales = ref([])
+const loading = ref(false)
+const error = ref('')
+
+const { hasRole, hasPermission } = useAuth()
+const canSeeAdmin = computed(() => hasRole('Admin') || hasPermission('UserRoleConfiguration'))
 
 const formatDate = (date) => {
   return dayjs(date).format('MMM DD, YYYY')
 }
 
 const fetchDashboardData = async () => {
+  loading.value = true
+  error.value = ''
   try {
+    console.log('🔍 Dashboard: Starting data fetch...')
+    
     // Fetch upcoming events
+    console.log('🔍 Dashboard: Fetching events...')
     const eventsResponse = await axios.get('/api/events')
+    console.log('🔍 Dashboard: Events response:', eventsResponse.data)
     const upcoming = eventsResponse.data.filter(event => 
-      dayjs(event.startDate).isAfter(dayjs()) && event.status === 'Scheduled'
+      dayjs(event.startDate).isAfter(dayjs()) && ['Scheduled','Upcoming'].includes(event.status)
     )
     upcomingEvents.value = upcoming.slice(0, 5)
+    console.log('🔍 Dashboard: Upcoming events:', upcomingEvents.value)
 
     // Fetch products
+    console.log('🔍 Dashboard: Fetching products...')
     const productsResponse = await axios.get('/api/products')
+    console.log('🔍 Dashboard: Products response:', productsResponse.data)
     recentProducts.value = productsResponse.data.slice(0, 5)
+    console.log('🔍 Dashboard: Recent products:', recentProducts.value)
 
     // Fetch sales
+    console.log('🔍 Dashboard: Fetching sales...')
     const salesResponse = await axios.get('/api/sales')
+    console.log('🔍 Dashboard: Sales response:', salesResponse.data)
     recentSales.value = salesResponse.data.slice(0, 5)
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error)
+    console.log('🔍 Dashboard: Recent sales:', recentSales.value)
+  } catch (err) {
+    console.error('🚨 Dashboard: Error fetching data:', err)
+    console.error('🚨 Dashboard: Error details:', err.response?.data || err.message)
+    error.value = `Failed to load dashboard data: ${err.response?.status || err.message}`
+  } finally {
+    loading.value = false
   }
 }
 

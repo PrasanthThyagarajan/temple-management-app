@@ -1,5 +1,50 @@
 <template>
   <div class="donations-container">
+    <!-- Enhanced Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic 
+            title="Total Donations" 
+            :value="summaryStats.totalAmount" 
+            prefix="₹"
+            :precision="2"
+          >
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><Money /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Count" :value="summaryStats.count">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><CollectionTag /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="This Month" :value="summaryStats.thisMonth" prefix="₹">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #409eff;"><Calendar /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="donations-card">
       <template #header>
         <div class="card-header">
@@ -11,7 +56,7 @@
         </div>
       </template>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -31,8 +76,10 @@
               v-model="templeFilter"
               placeholder="Filter by Temple"
               clearable
-              @change="handleTempleFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Temple" value="" />
               <el-option
                 v-for="temple in temples"
                 :key="temple.id"
@@ -46,15 +93,31 @@
               v-model="typeFilter"
               placeholder="Filter by Type"
               clearable
-              @change="handleTypeFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Type" value="" />
               <el-option label="Cash" value="Cash" />
               <el-option label="Check" value="Check" />
               <el-option label="Online" value="Online" />
               <el-option label="Other" value="Other" />
             </el-select>
           </el-col>
-          <el-col :xs="24" :sm="12" :md="4" :lg="4" :xl="4">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Date (Newest)" value="date-desc" />
+              <el-option label="Date (Oldest)" value="date-asc" />
+              <el-option label="Amount (High to Low)" value="amount-desc" />
+              <el-option label="Amount (Low to High)" value="amount-asc" />
+              <el-option label="Recently Added" value="id-desc" />
+            </el-select>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-date-picker
               v-model="dateRange"
               type="daterange"
@@ -67,94 +130,43 @@
               style="width: 100%"
             />
           </el-col>
-          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
-            <div class="action-buttons">
-              <el-button @click="loadDonations" :loading="loading" class="refresh-btn">
-                <el-icon><Refresh /></el-icon>
-                <span class="btn-text">Refresh</span>
-              </el-button>
-              <el-button type="success" @click="exportDonations" class="export-btn">
-                <el-icon><Download /></el-icon>
-                <span class="btn-text">Export</span>
-              </el-button>
-            </div>
-          </el-col>
         </el-row>
       </div>
 
       <!-- Devotional Banner -->
       <div class="devotional-banner donations-banner"></div>
 
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <el-row :gutter="20">
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon total">
-                  <el-icon><Money /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">₹{{ totalAmount.toLocaleString() }}</div>
-                  <div class="summary-label">Total Donations</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon count">
-                  <el-icon><Document /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ totalDonations }}</div>
-                  <div class="summary-label">Total Count</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon average">
-                  <el-icon><TrendCharts /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">₹{{ averageAmount.toLocaleString() }}</div>
-                  <div class="summary-label">Average</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon recent">
-                  <el-icon><Calendar /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ recentDonations }}</div>
-                  <div class="summary-label">This Month</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
 
       <!-- Donations Table -->
       <div class="table-container">
         <el-table
-          :data="donations"
+          :data="paginatedDonations"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-          <el-table-column prop="donorName" label="Donor Name" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="templeName" label="Temple" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="amount" label="Amount" width="120">
+          <el-table-column 
+            prop="donorName" 
+            label="Donor Name" 
+            min-width="150" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="templeName" 
+            label="Temple" 
+            min-width="150" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="amount" 
+            label="Amount" 
+            width="120"
+            sortable="custom"
+          >
             <template #default="scope">
               ₹{{ scope.row.amount.toLocaleString() }}
             </template>
@@ -166,7 +178,12 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="donationDate" label="Date" width="120">
+          <el-table-column 
+            prop="donationDate" 
+            label="Date" 
+            width="120"
+            sortable="custom"
+          >
             <template #default="scope">
               {{ formatDate(scope.row.donationDate) }}
             </template>
@@ -200,13 +217,14 @@
         </el-table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Enhanced Pagination -->
       <div class="pagination-container">
         <el-pagination
-          :current-page="currentPage"
-          :page-size="pageSize"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="totalDonations"
+          :total="filteredBeforePagination.length"
+          :background="true"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -379,7 +397,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Download, Money, Document, TrendCharts, Calendar } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Download, Money, CollectionTag, TrendCharts, Calendar, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
@@ -394,7 +412,7 @@ const typeFilter = ref('')
 const dateRange = ref([])
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalDonations = ref(0)
+const sortBy = ref('date-desc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const editingDonation = ref(null)
@@ -428,25 +446,96 @@ const donationRules = {
 const donationFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
 
-// Computed properties
-const totalAmount = computed(() => {
-  return donations.value.reduce((sum, donation) => sum + donation.amount, 0)
-})
-
-const averageAmount = computed(() => {
-  if (donations.value.length === 0) return 0
-  return Math.round(totalAmount.value / donations.value.length)
-})
-
-const recentDonations = computed(() => {
+// Summary Statistics
+const summaryStats = computed(() => {
   const currentMonth = dayjs().month()
   const currentYear = dayjs().year()
-  return donations.value.filter(donation => {
+  const thisMonthDonations = donations.value.filter(donation => {
     const donationDate = dayjs(donation.donationDate)
     return donationDate.month() === currentMonth && donationDate.year() === currentYear
-  }).length
+  })
+  
+  return {
+    totalAmount: donations.value.reduce((sum, d) => sum + (d.amount || 0), 0),
+    count: donations.value.length,
+    thisMonth: thisMonthDonations.reduce((sum, d) => sum + (d.amount || 0), 0)
+  }
+})
+
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...donations.value]
+  
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(d =>
+      d.donorName?.toLowerCase().includes(term) ||
+      d.purpose?.toLowerCase().includes(term) ||
+      d.templeName?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Apply temple filter
+  if (templeFilter.value) {
+    result = result.filter(d => d.templeId === parseInt(templeFilter.value))
+  }
+  
+  // Apply type filter
+  if (typeFilter.value) {
+    result = result.filter(d => d.donationType === typeFilter.value)
+  }
+  
+  // Apply date range filter
+  if (dateRange.value && dateRange.value.length === 2) {
+    const [start, end] = dateRange.value
+    result = result.filter(d => {
+      const date = dayjs(d.donationDate)
+      return date.isAfter(dayjs(start).subtract(1, 'day')) && date.isBefore(dayjs(end).add(1, 'day'))
+    })
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'date':
+          aVal = new Date(a.donationDate).getTime()
+          bVal = new Date(b.donationDate).getTime()
+          break
+        case 'amount':
+          aVal = a.amount
+          bVal = b.amount
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+  
+  return result
+})
+
+// Paginated data
+const paginatedDonations = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
 })
 
 // Methods
@@ -454,8 +543,11 @@ const loadDonations = async () => {
   try {
     loading.value = true
     const response = await axios.get(`${API_BASE}/donations`)
-    donations.value = response.data
-    totalDonations.value = response.data.length
+    donations.value = response.data.map(d => ({
+      ...d,
+      donorName: d.devoteeName || d.donorName || 'Anonymous',
+      templeName: temples.value.find(t => t.id === d.templeId)?.name || 'Unknown'
+    }))
   } catch (error) {
     console.error('Error loading donations:', error)
     ElMessage.error('Failed to load donations')
@@ -474,70 +566,33 @@ const loadTemples = async () => {
 }
 
 const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchDonations(searchTerm.value)
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'date-desc'
   } else {
-    loadDonations()
-  }
-}
-
-const searchDonations = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/donations/search/${term}`)
-    donations.value = response.data
-    totalDonations.value = response.data.length
-  } catch (error) {
-    console.error('Error searching donations:', error)
-    ElMessage.error('Failed to search donations')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleTempleFilter = () => {
-  if (templeFilter.value) {
-    filterByTemple(templeFilter.value)
-  } else {
-    loadDonations()
-  }
-}
-
-const filterByTemple = async (templeId) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/temples/${templeId}/donations`)
-    donations.value = response.data
-    totalDonations.value = response.data.length
-  } catch (error) {
-    console.error('Error filtering by temple:', error)
-    ElMessage.error('Failed to filter donations by temple')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleTypeFilter = () => {
-  if (typeFilter.value) {
-    donations.value = donations.value.filter(donation => donation.donationType === typeFilter.value)
-    totalDonations.value = donations.value.length
-  } else {
-    loadDonations()
+    let field = prop
+    if (prop === 'donationDate') field = 'date'
+    else if (prop === 'amount') field = 'amount'
+    else if (prop === 'donorName') field = 'donor'
+    else if (prop === 'templeName') field = 'temple'
+    
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
 }
 
 const handleDateFilter = () => {
-  if (dateRange.value && dateRange.value.length === 2) {
-    const startDate = dayjs(dateRange.value[0])
-    const endDate = dayjs(dateRange.value[1])
-    donations.value = donations.value.filter(donation => {
-      const donationDate = dayjs(donation.donationDate)
-      return donationDate.isAfter(startDate) && donationDate.isBefore(endDate)
-    })
-    totalDonations.value = donations.value.length
-  } else {
-    loadDonations()
-  }
+  currentPage.value = 1
 }
 
 const editDonation = (donation) => {
@@ -664,24 +719,40 @@ const exportDonations = () => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadDonations()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadDonations()
 }
 
 // Lifecycle
-onMounted(() => {
-  loadDonations()
-  loadTemples()
+onMounted(async () => {
+  await loadTemples()
+  await loadDonations()
 })
 </script>
 
 <style scoped>
 .donations-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
 }
 
 .donations-card {

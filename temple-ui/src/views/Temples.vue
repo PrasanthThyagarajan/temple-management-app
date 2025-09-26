@@ -1,5 +1,45 @@
 <template>
   <div class="temples-container">
+    <!-- Enhanced Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Temples" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><OfficeBuilding /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card active">
+          <el-statistic title="Active Temples" :value="summaryStats.active">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><House /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="States Covered" :value="summaryStats.states">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #409eff;"><Location /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="temples-card">
       <template #header>
         <div class="card-header">
@@ -14,7 +54,7 @@
       <!-- Devotional Banner -->
       <div class="devotional-banner temples-banner"></div>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8">
@@ -30,26 +70,32 @@
             </el-input>
           </el-col>
           <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-input
-              v-model="locationFilter.city"
-              placeholder="City"
+            <el-select
+              v-model="statusFilter"
+              placeholder="Filter by Status"
               clearable
-              @input="handleLocationFilter"
-            />
+              @change="handleFilterChange"
+              style="width: 100%"
+            >
+              <el-option label="Any Status" value="" />
+              <el-option label="Active" value="Active" />
+              <el-option label="Inactive" value="Inactive" />
+            </el-select>
           </el-col>
           <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-input
-              v-model="locationFilter.state"
-              placeholder="State"
-              clearable
-              @input="handleLocationFilter"
-            />
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="4" :lg="4" :xl="4">
-            <el-button @click="loadTemples" :loading="loading" class="refresh-btn">
-              <el-icon><Refresh /></el-icon>
-              <span class="btn-text">Refresh</span>
-            </el-button>
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Name (A-Z)" value="name-asc" />
+              <el-option label="Name (Z-A)" value="name-desc" />
+              <el-option label="Recently Added" value="id-desc" />
+              <el-option label="Oldest First" value="id-asc" />
+              <el-option label="Established (Newest)" value="year-desc" />
+              <el-option label="Established (Oldest)" value="year-asc" />
+            </el-select>
           </el-col>
         </el-row>
       </div>
@@ -57,17 +103,47 @@
       <!-- Temples Table -->
       <div class="table-container">
         <el-table
-          :data="temples"
+          :data="paginatedTemples"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-          <el-table-column prop="name" label="Temple Name" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="city" label="City" width="120" show-overflow-tooltip />
-          <el-table-column prop="state" label="State" width="120" show-overflow-tooltip />
-          <el-table-column prop="establishedYear" label="Established" width="100" />
-          <el-table-column prop="deity" label="Main Deity" width="150" show-overflow-tooltip />
+          <el-table-column 
+            prop="name" 
+            label="Temple Name" 
+            min-width="200" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="city" 
+            label="City" 
+            width="120" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="state" 
+            label="State" 
+            width="120" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="establishedYear" 
+            label="Established" 
+            width="100" 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="deity" 
+            label="Main Deity" 
+            width="150" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
           <el-table-column prop="status" label="Status" width="100">
             <template #default="scope">
               <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'" size="small">
@@ -96,13 +172,14 @@
         </el-table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Enhanced Pagination -->
       <div class="pagination-container">
         <el-pagination
-          :current-page="currentPage"
-          :page-size="pageSize"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="totalTemples"
+          :total="filteredBeforePagination.length"
+          :background="true"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -217,7 +294,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, OfficeBuilding, House, Location, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // Reactive data
@@ -225,10 +302,10 @@ const temples = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
-const locationFilter = reactive({ city: '', state: '' })
+const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalTemples = ref(0)
+const sortBy = ref('name-asc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const editingTemple = ref(null)
@@ -264,7 +341,78 @@ const isMobile = ref(false)
 const dialogWidth = ref('600px')
 
 // API base URL
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
+
+// Summary Statistics
+const summaryStats = computed(() => {
+  return {
+    total: temples.value.length,
+    active: temples.value.filter(t => t.status === 'Active').length,
+    states: [...new Set(temples.value.map(t => t.state).filter(Boolean))].length
+  }
+})
+
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...temples.value]
+  
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(t =>
+      t.name?.toLowerCase().includes(term) ||
+      t.city?.toLowerCase().includes(term) ||
+      t.state?.toLowerCase().includes(term) ||
+      t.deity?.toLowerCase().includes(term) ||
+      t.address?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Apply status filter
+  if (statusFilter.value) {
+    result = result.filter(t => t.status === statusFilter.value)
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'name':
+          aVal = (a.name || '').toLowerCase()
+          bVal = (b.name || '').toLowerCase()
+          break
+        case 'year':
+          aVal = parseInt(a.establishedYear) || 0
+          bVal = parseInt(b.establishedYear) || 0
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+  
+  return result
+})
+
+// Paginated data
+const paginatedTemples = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
+})
 
 // Responsive methods
 const checkScreenSize = () => {
@@ -282,7 +430,6 @@ const loadTemples = async () => {
     loading.value = true
     const response = await axios.get(`${API_BASE}/temples`)
     temples.value = response.data
-    totalTemples.value = response.data.length
   } catch (error) {
     console.error('Error loading temples:', error)
     ElMessage.error('Failed to load temples')
@@ -292,50 +439,25 @@ const loadTemples = async () => {
 }
 
 const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchTemples(searchTerm.value)
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'name-asc'
   } else {
-    loadTemples()
-  }
-}
-
-const searchTemples = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/temples/search/${term}`)
-    temples.value = response.data
-    totalTemples.value = response.data.length
-  } catch (error) {
-    console.error('Error searching temples:', error)
-    ElMessage.error('Failed to search temples')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleLocationFilter = () => {
-  if (locationFilter.city || locationFilter.state) {
-    filterByLocation()
-  } else {
-    loadTemples()
-  }
-}
-
-const filterByLocation = async () => {
-  try {
-    loading.value = true
-    const params = new URLSearchParams()
-    if (locationFilter.city) params.append('city', locationFilter.city)
-    if (locationFilter.state) params.append('state', locationFilter.state)
+    let field = prop
+    if (prop === 'establishedYear') field = 'year'
     
-    const response = await axios.get(`${API_BASE}/temples/location/${locationFilter.city}?state=${locationFilter.state}`)
-    temples.value = response.data
-    totalTemples.value = response.data.length
-  } catch (error) {
-    console.error('Error filtering by location:', error)
-    ElMessage.error('Failed to filter temples by location')
-  } finally {
-    loading.value = false
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
 }
 
@@ -419,12 +541,11 @@ const resetForm = () => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadTemples()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadTemples()
 }
 
 // Lifecycle
@@ -442,6 +563,27 @@ onUnmounted(() => {
 <style scoped>
 .temples-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
+}
+
+.summary-card.active {
+  border-left: 4px solid #67c23a;
 }
 
 .temples-card {

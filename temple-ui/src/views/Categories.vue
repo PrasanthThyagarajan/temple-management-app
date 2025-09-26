@@ -1,144 +1,195 @@
 <template>
   <div class="categories-container">
-    <el-card class="header-card">
-      <div class="header-content">
-        <div class="header-left">
-          <h2>Product Categories</h2>
-          <p>Manage product categories for your temple shop</p>
-        </div>
-        <div class="header-right">
-          <el-button type="primary" :icon="Plus" @click="showAddDialog">
+    <!-- Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="8">
+        <el-card class="summary-card">
+          <el-statistic title="Total Categories" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><Collection /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8">
+        <el-card class="summary-card active">
+          <el-statistic title="Active Categories" :value="summaryStats.active">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><Check /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8">
+        <el-card class="summary-card">
+          <el-statistic title="Inactive Categories" :value="summaryStats.inactive">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #f56c6c;"><Close /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-card class="categories-card">
+      <template #header>
+        <div class="card-header">
+          <h2>Category Management</h2>
+          <el-button type="primary" @click="showAddDialog">
+            <el-icon><Plus /></el-icon>
             Add Category
           </el-button>
         </div>
+      </template>
+
+      <!-- Devotional Banner -->
+      <div class="devotional-banner categories-banner"></div>
+
+      <!-- Search and Filters -->
+      <div class="search-filters">
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8">
+            <el-input
+              v-model="searchTerm"
+              placeholder="Search categories..."
+              clearable
+              @input="handleSearch"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4">
+            <el-select
+              v-model="statusFilter"
+              placeholder="Filter by Status"
+              clearable
+              @change="handleFilterChange"
+              style="width: 100%"
+            >
+              <el-option label="Any Status" value="" />
+              <el-option label="Active" value="active" />
+              <el-option label="Inactive" value="inactive" />
+            </el-select>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4">
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Name (A-Z)" value="name-asc" />
+              <el-option label="Name (Z-A)" value="name-desc" />
+              <el-option label="Sort Order" value="sortOrder-asc" />
+              <el-option label="Recently Added" value="id-desc" />
+            </el-select>
+          </el-col>
+          <el-col :xs="24" :sm="24" :md="8">
+            <div class="action-buttons">
+              <el-button @click="refreshCategories" :loading="loading" class="refresh-btn">
+                <el-icon><Refresh /></el-icon>
+                <span class="btn-text">Refresh</span>
+              </el-button>
+            </div>
+          </el-col>
+        </el-row>
       </div>
-    </el-card>
 
-    <!-- Devotional Banner -->
-    <div class="devotional-banner categories-banner"></div>
-
-    <!-- Summary Cards -->
-    <div class="summary-cards">
-      <el-card class="summary-card">
-        <div class="summary-content">
-          <div class="summary-icon total">
-            <el-icon><List /></el-icon>
-          </div>
-          <div class="summary-text">
-            <div class="summary-value">{{ categories.length }}</div>
-            <div class="summary-label">Total Categories</div>
-          </div>
-        </div>
-      </el-card>
-      
-      <el-card class="summary-card">
-        <div class="summary-content">
-          <div class="summary-icon active">
-            <el-icon><Check /></el-icon>
-          </div>
-          <div class="summary-text">
-            <div class="summary-value">{{ activeCategories }}</div>
-            <div class="summary-label">Active Categories</div>
-          </div>
-        </div>
-      </el-card>
-      
-      <el-card class="summary-card">
-        <div class="summary-content">
-          <div class="summary-icon inactive">
-            <el-icon><Close /></el-icon>
-          </div>
-          <div class="summary-text">
-            <div class="summary-value">{{ inactiveCategories }}</div>
-            <div class="summary-label">Inactive Categories</div>
-          </div>
-        </div>
-      </el-card>
-    </div>
-
-    <!-- Filters and Search -->
-    <el-card class="filter-card">
-      <div class="filter-content">
-        <div class="filter-left">
-          <el-input
-            v-model="searchTerm"
-            placeholder="Search categories..."
-            :prefix-icon="Search"
-            @input="handleSearch"
-            clearable
-          />
-          <el-select
-            v-model="statusFilter"
-            placeholder="Filter by status"
-            @change="handleStatusFilter"
-            clearable
-          >
-            <el-option label="Active" value="active" />
-            <el-option label="Inactive" value="inactive" />
-          </el-select>
-        </div>
-        <div class="filter-right">
-          <el-button :icon="Refresh" @click="loadCategories">
-            Refresh
-          </el-button>
-        </div>
-      </div>
-    </el-card>
-
-    <!-- Categories Table -->
-    <el-card class="table-card">
+      <!-- Table View -->
       <div class="table-container">
         <el-table
-          :data="filteredCategories"
+          :data="paginatedCategories"
           v-loading="loading"
           stripe
           style="width: 100%"
+          @sort-change="handleTableSortChange"
         >
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="Name" min-width="150" />
-        <el-table-column prop="description" label="Description" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="sortOrder" label="Sort Order" width="120" align="center" />
-        <el-table-column label="Status" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.isActive ? 'success' : 'danger'">
-              {{ row.isActive ? 'Active' : 'Inactive' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="Created" width="120">
-          <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="Actions" width="200" align="center">
-          <template #default="{ row }">
-            <el-button
-              type="primary"
-              size="small"
-              :icon="Edit"
-              @click="showEditDialog(row)"
-            >
-              <span class="btn-text">Edit</span>
-            </el-button>
-            <el-button
-              :type="row.isActive ? 'warning' : 'success'"
-              size="small"
-              :icon="Switch"
-              @click="toggleStatus(row)"
-            >
-              <span class="btn-text">{{ row.isActive ? 'Deactivate' : 'Activate' }}</span>
-            </el-button>
-            <el-button
-              type="danger"
-              size="small"
-              :icon="Delete"
-              @click="confirmDelete(row)"
-            >
-              <span class="btn-text">Delete</span>
-            </el-button>
-          </template>
-        </el-table-column>
+          <el-table-column prop="id" label="ID" width="80" sortable="custom" />
+          <el-table-column 
+            prop="name" 
+            label="Category Name" 
+            min-width="200" 
+            sortable="custom"
+          >
+            <template #default="{ row }">
+              <strong>{{ row.name }}</strong>
+            </template>
+          </el-table-column>
+          <el-table-column 
+            prop="description" 
+            label="Description" 
+            min-width="300" 
+            show-overflow-tooltip 
+          >
+            <template #default="{ row }">
+              <span v-if="row.description">{{ row.description }}</span>
+              <span v-else style="color: #909399; font-style: italic;">No description</span>
+            </template>
+          </el-table-column>
+          <el-table-column 
+            prop="sortOrder" 
+            label="Sort Order" 
+            width="120" 
+            align="center" 
+            sortable="custom"
+          />
+          <el-table-column label="Status" width="100" align="center">
+            <template #default="{ row }">
+              <el-tag :type="row.isActive ? 'success' : 'danger'">
+                {{ row.isActive ? 'Active' : 'Inactive' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createdAt" label="Created Date" width="160" sortable="custom">
+            <template #default="{ row }">
+              {{ formatDate(row.createdAt) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="Actions" width="180" align="center">
+            <template #default="{ row }">
+              <el-button
+                type="primary"
+                size="small"
+                :icon="Edit"
+                @click="showEditDialog(row)"
+              >
+                <span class="btn-text">Edit</span>
+              </el-button>
+              <el-button
+                :type="row.isActive ? 'warning' : 'success'"
+                size="small"
+                :icon="Switch"
+                @click="toggleStatus(row)"
+              >
+                <span class="btn-text">{{ row.isActive ? 'Deactivate' : 'Activate' }}</span>
+              </el-button>
+              <el-button
+                type="danger"
+                size="small"
+                :icon="Delete"
+                @click="confirmDelete(row)"
+              >
+                <span class="btn-text">Delete</span>
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-container">
+        <el-pagination
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="filteredBeforePagination.length"
+          :background="true"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
       </div>
     </el-card>
 
@@ -146,37 +197,30 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEditing ? 'Edit Category' : 'Add Category'"
-      width="500px"
+      :width="dialogWidth"
+      :fullscreen="isMobileDialog"
       @close="resetForm"
     >
-      <el-form
-        ref="categoryFormRef"
-        :model="categoryForm"
-        :rules="formRules"
-        label-width="120px"
-      >
-        <el-form-item label="Name" prop="name">
+      <el-form :model="categoryForm" :rules="rules" ref="categoryFormRef" :label-width="isMobileDialog ? '100px' : '120px'">
+        <el-form-item label="Category Name" prop="name">
           <el-input v-model="categoryForm.name" placeholder="Enter category name" />
         </el-form-item>
-        
         <el-form-item label="Description" prop="description">
           <el-input
             v-model="categoryForm.description"
             type="textarea"
             :rows="3"
-            placeholder="Enter category description"
+            placeholder="Enter category description (optional)"
           />
         </el-form-item>
-        
         <el-form-item label="Sort Order" prop="sortOrder">
           <el-input-number
             v-model="categoryForm.sortOrder"
             :min="0"
-            :max="999"
-            placeholder="Sort order"
+            :max="9999"
+            controls-position="right"
           />
         </el-form-item>
-        
         <el-form-item label="Status" prop="isActive">
           <el-switch
             v-model="categoryForm.isActive"
@@ -185,11 +229,10 @@
           />
         </el-form-item>
       </el-form>
-      
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="saveCategory" :loading="saving">
+          <el-button type="primary" @click="submitForm" :loading="submitting">
             {{ isEditing ? 'Update' : 'Create' }}
           </el-button>
         </div>
@@ -199,23 +242,31 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, List, Check, Close, Switch } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Collection, Check, Close, Switch, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // API Configuration
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
 
 // Reactive data
 const categories = ref([])
 const loading = ref(false)
-const saving = ref(false)
-const searchTerm = ref('')
-const statusFilter = ref('')
 const dialogVisible = ref(false)
 const isEditing = ref(false)
-const editingId = ref(null)
+const submitting = ref(false)
+const currentCategory = ref(null)
+
+// Responsive properties
+const windowWidth = ref(window.innerWidth)
+const isMobileDialog = computed(() => windowWidth.value < 768)
+const dialogWidth = computed(() => {
+  if (windowWidth.value < 576) return '100%'
+  if (windowWidth.value < 768) return '95%'
+  if (windowWidth.value < 992) return '90%'
+  return '500px'
+})
 
 // Form data
 const categoryForm = reactive({
@@ -226,54 +277,86 @@ const categoryForm = reactive({
 })
 
 // Form validation rules
-const formRules = {
+const rules = {
   name: [
     { required: true, message: 'Please enter category name', trigger: 'blur' },
-    { min: 2, max: 100, message: 'Name must be between 2 and 100 characters', trigger: 'blur' }
-  ],
-  description: [
-    { max: 500, message: 'Description cannot exceed 500 characters', trigger: 'blur' }
+    { min: 2, max: 100, message: 'Length should be between 2 to 100', trigger: 'blur' }
   ],
   sortOrder: [
-    { type: 'number', min: 0, max: 999, message: 'Sort order must be between 0 and 999', trigger: 'blur' }
+    { required: true, message: 'Please enter sort order', trigger: 'blur' }
   ]
 }
 
-// Computed properties
-const filteredCategories = computed(() => {
-  let filtered = categories.value
+// Filter and pagination
+const searchTerm = ref('')
+const statusFilter = ref('')
+const sortBy = ref('name-asc')
+const currentPage = ref(1)
+const pageSize = ref(10)
+const categoryFormRef = ref(null)
 
+// Computed properties
+const summaryStats = computed(() => {
+  return {
+    total: categories.value.length,
+    active: categories.value.filter(c => c.isActive).length,
+    inactive: categories.value.filter(c => !c.isActive).length
+  }
+})
+
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...categories.value]
+
+  // Apply search filter
   if (searchTerm.value) {
     const term = searchTerm.value.toLowerCase()
-    filtered = filtered.filter(category =>
-      category.name.toLowerCase().includes(term) ||
-      category.description.toLowerCase().includes(term)
+    result = result.filter(c =>
+      c.name?.toLowerCase().includes(term) ||
+      c.description?.toLowerCase().includes(term)
     )
   }
 
+  // Apply status filter
   if (statusFilter.value) {
-    filtered = filtered.filter(category => {
-      if (statusFilter.value === 'active') return category.isActive
-      if (statusFilter.value === 'inactive') return !category.isActive
+    result = result.filter(c => {
+      if (statusFilter.value === 'active') return c.isActive
+      if (statusFilter.value === 'inactive') return !c.isActive
       return true
     })
   }
 
-  return filtered
+  // Apply sorting
+  const [field, order] = sortBy.value.split('-')
+  result.sort((a, b) => {
+    let aVal = a[field]
+    let bVal = b[field]
+    
+    if (typeof aVal === 'string') {
+      aVal = aVal.toLowerCase()
+      bVal = bVal.toLowerCase()
+    }
+    
+    if (order === 'asc') {
+      return aVal > bVal ? 1 : -1
+    } else {
+      return aVal < bVal ? 1 : -1
+    }
+  })
+
+  return result
 })
 
-const activeCategories = computed(() => {
-  return categories.value.filter(category => category.isActive).length
-})
-
-const inactiveCategories = computed(() => {
-  return categories.value.filter(category => !category.isActive).length
+const paginatedCategories = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredBeforePagination.value.slice(start, end)
 })
 
 // Methods
 const loadCategories = async () => {
+  loading.value = true
   try {
-    loading.value = true
     const response = await axios.get(`${API_BASE}/categories`)
     categories.value = response.data
   } catch (error) {
@@ -284,55 +367,115 @@ const loadCategories = async () => {
   }
 }
 
+const formatDate = (dateString) => {
+  if (!dateString) return '-'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit'
+  })
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  currentPage.value = 1
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'name-asc'
+  } else {
+    const orderStr = order === 'ascending' ? 'asc' : 'desc'
+    sortBy.value = `${prop}-${orderStr}`
+  }
+}
+
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val) => {
+  currentPage.value = val
+}
+
 const showAddDialog = () => {
   isEditing.value = false
-  editingId.value = null
   resetForm()
   dialogVisible.value = true
 }
 
-const showEditDialog = (category) => {
+const showEditDialog = (row) => {
   isEditing.value = true
-  editingId.value = category.id
+  currentCategory.value = row
   Object.assign(categoryForm, {
-    name: category.name,
-    description: category.description,
-    sortOrder: category.sortOrder,
-    isActive: category.isActive
+    name: row.name,
+    description: row.description || '',
+    sortOrder: row.sortOrder,
+    isActive: row.isActive
   })
   dialogVisible.value = true
 }
 
-const saveCategory = async () => {
+const resetForm = () => {
+  if (categoryFormRef.value) {
+    categoryFormRef.value.resetFields()
+  }
+  Object.assign(categoryForm, {
+    name: '',
+    description: '',
+    sortOrder: 0,
+    isActive: true
+  })
+  currentCategory.value = null
+}
+
+const submitForm = async () => {
+  const valid = await categoryFormRef.value.validate()
+  if (!valid) return
+
+  submitting.value = true
   try {
-    saving.value = true
-    
-    if (isEditing.value) {
-      await axios.put(`${API_BASE}/categories/${editingId.value}`, categoryForm)
+    const payload = {
+      name: categoryForm.name,
+      description: categoryForm.description || null,
+      sortOrder: categoryForm.sortOrder,
+      isActive: categoryForm.isActive
+    }
+
+    if (isEditing.value && currentCategory.value) {
+      await axios.put(`${API_BASE}/categories/${currentCategory.value.id}`, payload)
       ElMessage.success('Category updated successfully')
     } else {
-      await axios.post(`${API_BASE}/categories`, categoryForm)
+      await axios.post(`${API_BASE}/categories`, payload)
       ElMessage.success('Category created successfully')
     }
-    
+
     dialogVisible.value = false
     await loadCategories()
   } catch (error) {
     console.error('Error saving category:', error)
-    if (error.response?.data) {
-      ElMessage.error(error.response.data)
-    } else {
-      ElMessage.error('Failed to save category')
-    }
+    ElMessage.error('Failed to save category')
   } finally {
-    saving.value = false
+    submitting.value = false
   }
 }
 
-const toggleStatus = async (category) => {
+const toggleStatus = async (row) => {
   try {
-    await axios.put(`${API_BASE}/categories/${category.id}/toggle-status`)
-    ElMessage.success(`Category ${category.isActive ? 'deactivated' : 'activated'} successfully`)
+    await axios.put(`${API_BASE}/categories/${row.id}`, {
+      ...row,
+      isActive: !row.isActive
+    })
+    ElMessage.success(`Category ${!row.isActive ? 'activated' : 'deactivated'} successfully`)
     await loadCategories()
   } catch (error) {
     console.error('Error toggling category status:', error)
@@ -340,212 +483,102 @@ const toggleStatus = async (category) => {
   }
 }
 
-const confirmDelete = async (category) => {
-  try {
-    await ElMessageBox.confirm(
-      `Are you sure you want to delete the category "${category.name}"? This action cannot be undone.`,
-      'Confirm Delete',
-      {
-        confirmButtonText: 'Delete',
-        cancelButtonText: 'Cancel',
-        type: 'warning'
-      }
-    )
-    
-    await axios.delete(`${API_BASE}/categories/${category.id}`)
-    ElMessage.success('Category deleted successfully')
-    await loadCategories()
-  } catch (error) {
-    if (error !== 'cancel') {
+const confirmDelete = (row) => {
+  ElMessageBox.confirm(
+    `Are you sure you want to delete "${row.name}"? This action cannot be undone.`,
+    'Delete Category',
+    {
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      type: 'warning',
+      confirmButtonClass: 'el-button--danger'
+    }
+  ).then(async () => {
+    try {
+      await axios.delete(`${API_BASE}/categories/${row.id}`)
+      ElMessage.success('Category deleted successfully')
+      await loadCategories()
+    } catch (error) {
       console.error('Error deleting category:', error)
       ElMessage.error('Failed to delete category')
     }
-  }
-}
-
-const handleSearch = () => {
-  // Search is handled by computed property
-}
-
-const handleStatusFilter = () => {
-  // Filter is handled by computed property
-}
-
-const resetForm = () => {
-  Object.assign(categoryForm, {
-    name: '',
-    description: '',
-    sortOrder: 0,
-    isActive: true
+  }).catch(() => {
+    // User cancelled the operation
   })
 }
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString()
+const refreshCategories = () => {
+  loadCategories()
+}
+
+// Window resize handler
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
 }
 
 // Lifecycle
 onMounted(() => {
   loadCategories()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
 .categories-container {
   padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.header-card {
-  margin-bottom: 20px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left h2 {
-  margin: 0 0 5px 0;
-  color: #303133;
-}
-
-.header-left p {
-  margin: 0;
-  color: #606266;
-  font-size: 14px;
 }
 
 .summary-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
   margin-bottom: 20px;
 }
 
 .summary-card {
-  border: none;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
 }
 
-.summary-content {
-  display: flex;
-  align-items: center;
-  padding: 10px 0;
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 }
 
-.summary-icon {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 15px;
-  font-size: 20px;
-  color: white;
+.summary-card .el-statistic {
+  padding: 20px 0;
 }
 
-.summary-icon.total {
-  background-color: #409eff;
+.summary-card.active {
+  border-left: 4px solid #67c23a;
 }
 
-.summary-icon.active {
-  background-color: #67c23a;
-}
-
-.summary-icon.inactive {
-  background-color: #f56c6c;
-}
-
-.summary-text {
-  flex: 1;
-}
-
-.summary-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  line-height: 1;
-}
-
-.summary-label {
-  font-size: 14px;
-  color: #909399;
-  margin-top: 5px;
-}
-
-.filter-card {
+.categories-card {
   margin-bottom: 20px;
 }
 
-.filter-content {
+.card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.filter-left {
-  display: flex;
-  align-items: center;
+.card-header h2 {
+  margin: 0;
+  color: #303133;
 }
 
-.table-card {
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+.search-filters {
+  margin-bottom: 20px;
+}
+
+.search-filters .el-row {
+  row-gap: 10px;
 }
 
 .table-container {
-  width: 100%;
   overflow-x: auto;
-}
-
-.dialog-footer {
-  text-align: right;
-}
-
-.dialog-footer .el-button {
-  margin-left: 10px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .filter-content {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
-
-  .filter-left {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .filter-left .el-input,
-  .filter-left .el-select {
-    width: 100% !important;
-  }
-
-  .summary-cards {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .table-card .el-button .btn-text {
-    display: none;
-  }
-}
-
-@media (max-width: 480px) {
-  .summary-cards {
-    grid-template-columns: 1fr;
-  }
+  margin-bottom: 20px;
 }
 
 .devotional-banner {
@@ -556,5 +589,171 @@ onMounted(() => {
   background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-banner-bg), var(--devi-fallback);
   background-size: cover;
   background-position: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.btn-text {
+  display: inline;
+}
+
+.refresh-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.dialog-footer {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .categories-container {
+    padding: 10px;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .card-header h2 {
+    font-size: 20px;
+  }
+  
+  .search-filters {
+    margin-bottom: 15px;
+  }
+  
+  .action-buttons {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  
+  .action-buttons .el-button {
+    flex: 1 1 48%;
+    min-width: 140px;
+    font-size: 12px;
+  }
+  
+  .btn-text {
+    display: none;
+  }
+  
+  .refresh-btn .btn-text {
+    display: inline;
+  }
+  
+  .summary-cards {
+    margin-bottom: 15px;
+  }
+  
+  .summary-card {
+    margin-bottom: 10px;
+  }
+  
+  .pagination-container {
+    text-align: center;
+  }
+  
+  .pagination-container .el-pagination {
+    justify-content: center;
+  }
+
+  /* Dialog responsive styles */
+  .el-dialog__body {
+    padding: 10px 15px;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+
+  /* Make dialog scrollable on mobile */
+  .el-dialog.is-fullscreen .el-dialog__body {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .el-form-item__label {
+    font-size: 13px;
+  }
+
+  /* Adjust form label width for mobile */
+  .el-dialog .el-form .el-form-item__label {
+    width: 100px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .categories-container {
+    padding: 5px;
+  }
+  
+  .card-header h2 {
+    font-size: 18px;
+  }
+  
+  .search-filters {
+    margin-bottom: 10px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+  
+  .summary-card {
+    margin-bottom: 10px;
+  }
+  
+  .pagination-container .el-pagination {
+    font-size: 12px;
+  }
+  
+  .pagination-container .el-pagination .el-pager li {
+    min-width: 28px;
+    height: 28px;
+    line-height: 28px;
+  }
+
+  /* Extra small screen dialog adjustments */
+  .el-dialog .el-form .el-form-item__label {
+    width: 80px !important;
+    font-size: 12px;
+    text-align: left !important;
+  }
+
+  /* Dialog footer responsive */
+  .dialog-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .dialog-footer .el-button {
+    flex: 1;
+    min-width: 80px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .categories-container {
+    padding: 15px;
+  }
+  
+  .action-buttons .el-button {
+    font-size: 13px;
+  }
 }
 </style>

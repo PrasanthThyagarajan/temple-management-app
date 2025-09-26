@@ -1,5 +1,45 @@
 <template>
   <div class="devotees-container">
+    <!-- Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Devotees" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><User /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card active">
+          <el-statistic title="Active Devotees" :value="summaryStats.active">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><UserFilled /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Temples Represented" :value="summaryStats.temples">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #409eff;"><OfficeBuilding /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="devotees-card">
       <template #header>
         <div class="card-header">
@@ -14,7 +54,7 @@
       <!-- Devotional Banner -->
       <div class="devotional-banner devotees-banner"></div>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -34,8 +74,10 @@
               v-model="templeFilter"
               placeholder="Filter by Temple"
               clearable
-              @change="handleTempleFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Temple" value="" />
               <el-option
                 v-for="temple in temples"
                 :key="temple.id"
@@ -49,17 +91,28 @@
               v-model="statusFilter"
               placeholder="Filter by Status"
               clearable
-              @change="handleStatusFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Status" value="" />
               <el-option label="Active" value="Active" />
               <el-option label="Inactive" value="Inactive" />
             </el-select>
           </el-col>
           <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
-            <el-button @click="loadDevotees" :loading="loading" class="refresh-btn">
-              <el-icon><Refresh /></el-icon>
-              <span class="btn-text">Refresh</span>
-            </el-button>
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Name (A-Z)" value="name-asc" />
+              <el-option label="Name (Z-A)" value="name-desc" />
+              <el-option label="Recently Added" value="id-desc" />
+              <el-option label="Oldest First" value="id-asc" />
+              <el-option label="Member Since (Newest)" value="membership-desc" />
+              <el-option label="Member Since (Oldest)" value="membership-asc" />
+            </el-select>
           </el-col>
         </el-row>
       </div>
@@ -67,17 +120,40 @@
       <!-- Devotees Table -->
       <div class="table-container">
         <el-table
-          :data="devotees"
+          :data="paginatedDevotees"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-          <el-table-column prop="name" label="Name" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="email" label="Email" min-width="200" show-overflow-tooltip />
+          <el-table-column 
+            prop="name" 
+            label="Name" 
+            min-width="150" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="email" 
+            label="Email" 
+            min-width="200" 
+            show-overflow-tooltip 
+          />
           <el-table-column prop="phone" label="Phone" width="130" />
-          <el-table-column prop="templeName" label="Temple" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="membershipDate" label="Member Since" width="120">
+          <el-table-column 
+            prop="templeName" 
+            label="Temple" 
+            min-width="150" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="membershipDate" 
+            label="Member Since" 
+            width="120"
+            sortable="custom"
+          >
             <template #default="scope">
               {{ formatDate(scope.row.membershipDate) }}
             </template>
@@ -110,13 +186,14 @@
         </el-table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Enhanced Pagination -->
       <div class="pagination-container">
         <el-pagination
-          :current-page="currentPage"
-          :page-size="pageSize"
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="totalDevotees"
+          :total="filteredBeforePagination.length"
+          :background="true"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -260,7 +337,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, User, UserFilled, OfficeBuilding, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
@@ -274,7 +351,7 @@ const templeFilter = ref('')
 const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalDevotees = ref(0)
+const sortBy = ref('id-desc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const editingDevotee = ref(null)
@@ -311,15 +388,93 @@ const devoteeRules = {
 const devoteeFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
+
+// Summary Statistics
+const summaryStats = computed(() => {
+  return {
+    total: devotees.value.length,
+    active: devotees.value.filter(d => d.status === 'Active').length,
+    temples: [...new Set(devotees.value.map(d => d.templeId))].length
+  }
+})
+
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...devotees.value]
+  
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(d =>
+      d.name?.toLowerCase().includes(term) ||
+      d.email?.toLowerCase().includes(term) ||
+      d.phone?.includes(term) ||
+      d.templeName?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Apply temple filter
+  if (templeFilter.value) {
+    result = result.filter(d => d.templeId === parseInt(templeFilter.value))
+  }
+  
+  // Apply status filter
+  if (statusFilter.value) {
+    result = result.filter(d => d.status === statusFilter.value)
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'name':
+          aVal = (a.name || '').toLowerCase()
+          bVal = (b.name || '').toLowerCase()
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        case 'membership':
+          aVal = new Date(a.membershipDate || 0).getTime()
+          bVal = new Date(b.membershipDate || 0).getTime()
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+  
+  return result
+})
+
+// Paginated data
+const paginatedDevotees = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
+})
 
 // Methods
 const loadDevotees = async () => {
   try {
     loading.value = true
     const response = await axios.get(`${API_BASE}/devotees`)
-    devotees.value = response.data
-    totalDevotees.value = response.data.length
+    devotees.value = response.data.map(d => ({
+      ...d,
+      name: d.fullName || d.name || '',
+      templeName: temples.value.find(t => t.id === d.templeId)?.name || 'Unknown'
+    }))
   } catch (error) {
     console.error('Error loading devotees:', error)
     ElMessage.error('Failed to load devotees')
@@ -338,65 +493,33 @@ const loadTemples = async () => {
 }
 
 const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchDevotees(searchTerm.value)
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'id-desc'
   } else {
-    loadDevotees()
+    let field = prop
+    if (prop === 'templeName') field = 'temple'
+    else if (prop === 'membershipDate') field = 'membership'
+    
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
-}
-
-const searchDevotees = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/devotees/search/${term}`)
-    devotees.value = response.data
-    totalDevotees.value = response.data.length
-  } catch (error) {
-    console.error('Error searching devotees:', error)
-    ElMessage.error('Failed to search devotees')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleTempleFilter = () => {
-  if (templeFilter.value) {
-    filterByTemple(templeFilter.value)
-  } else {
-    loadDevotees()
-  }
-}
-
-const filterByTemple = async (templeId) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/temples/${templeId}/devotees`)
-    devotees.value = response.data
-    totalDevotees.value = response.data.length
-  } catch (error) {
-    console.error('Error filtering by temple:', error)
-    ElMessage.error('Failed to filter devotees by temple')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleStatusFilter = () => {
-  if (statusFilter.value) {
-    filterByStatus(statusFilter.value)
-  } else {
-    loadDevotees()
-  }
-}
-
-const filterByStatus = () => {
-  devotees.value = devotees.value.filter(devotee => devotee.status === statusFilter.value)
-  totalDevotees.value = devotees.value.length
 }
 
 const editDevotee = (devotee) => {
   editingDevotee.value = devotee
   Object.assign(devoteeForm, devotee)
+  devoteeForm.name = devotee.name || devotee.fullName || ''
   showCreateDialog.value = true
 }
 
@@ -405,14 +528,30 @@ const saveDevotee = async () => {
     await devoteeFormRef.value.validate()
     saving.value = true
     
+    // Clean up form data before sending
+    const formData = {
+      ...devoteeForm,
+      dateOfBirth: devoteeForm.dateOfBirth || null,
+      membershipDate: devoteeForm.membershipDate || null
+    }
+    
     if (editingDevotee.value) {
       // Update existing devotee
-      await axios.put(`${API_BASE}/devotees/${editingDevotee.value.id}`, devoteeForm)
+      await axios.put(`${API_BASE}/devotees/${editingDevotee.value.id}`, formData)
       ElMessage.success('Devotee updated successfully')
     } else {
-      // Create new devotee
-      await axios.post(`${API_BASE}/devotees`, devoteeForm)
-      ElMessage.success('Devotee created successfully')
+      // Create new devotee and show generated password if provided
+      const response = await axios.post(`${API_BASE}/devotees`, formData)
+      const pwd = response?.data?.generatedPassword
+      if (pwd) {
+        await ElMessageBox.alert(
+          `User account created. Generated temporary password:\n\n${pwd}\n\nPlease share securely or the user can reset after login.`,
+          'Account Created',
+          { confirmButtonText: 'OK' }
+        )
+      } else {
+        ElMessage.success('Devotee created successfully')
+      }
     }
     
     showCreateDialog.value = false
@@ -481,24 +620,44 @@ const formatDate = (dateString) => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadDevotees()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadDevotees()
 }
 
 // Lifecycle
-onMounted(() => {
-  loadDevotees()
-  loadTemples()
+onMounted(async () => {
+  await loadTemples()
+  await loadDevotees()
 })
 </script>
 
 <style scoped>
 .devotees-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
+}
+
+.summary-card.active {
+  border-left: 4px solid #67c23a;
 }
 
 .devotees-card {

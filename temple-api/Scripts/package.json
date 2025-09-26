@@ -1,0 +1,16 @@
+{
+  "name": "temple-database-viewer",
+  "version": "1.0.0",
+  "description": "Simple SQLite database viewer for Temple Management System",
+  "main": "view-database.js",
+  "scripts": {
+    "view": "node view-database.js",
+    "expenses": "node view-expenses.js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

@@ -13,6 +13,7 @@ namespace TempleApi.Models.DTOs
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerPhone { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
+        public int? EventId { get; set; }
         public List<CreateSaleItemDto> SaleItems { get; set; } = new List<CreateSaleItemDto>();
     }
 

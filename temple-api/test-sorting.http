@@ -1,0 +1,53 @@
+### Test Sorting of API Endpoints
+
+### Get all temples - should be sorted by ID descending
+GET http://localhost:5000/api/temples
+Accept: application/json
+
+### Get all events - should be sorted by ID descending
+GET http://localhost:5000/api/events
+Accept: application/json
+
+### Get all areas - should be sorted by ID descending
+GET http://localhost:5000/api/areas
+Accept: application/json
+
+### Get all devotees - should be sorted by ID descending
+GET http://localhost:5000/api/devotees
+Accept: application/json
+
+### Get all donations - should already be sorted by date descending
+GET http://localhost:5000/api/donations
+Accept: application/json
+
+### Get all event types - should be sorted by ID descending
+GET http://localhost:5000/api/event-types
+Accept: application/json
+
+### Get all event expenses - should be sorted by ID descending
+GET http://localhost:5000/api/event-expenses
+Accept: application/json
+
+### Get all expense services - should be sorted by ID descending
+GET http://localhost:5000/api/expense-services
+Accept: application/json
+
+### Get all expense items - should be sorted by ID descending
+GET http://localhost:5000/api/expense-items
+Accept: application/json
+
+### Get all vouchers - should be sorted by ID descending
+GET http://localhost:5000/api/vouchers
+Accept: application/json
+
+### Get all sales - should be sorted by ID descending
+GET http://localhost:5000/api/sales
+Accept: application/json
+
+### Get all products - should be sorted by ID descending
+GET http://localhost:5000/api/products
+Accept: application/json
+
+### Get all categories - should be sorted by ID descending
+GET http://localhost:5000/api/categories
+Accept: application/json

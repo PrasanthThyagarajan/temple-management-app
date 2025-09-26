@@ -1,5 +1,50 @@
 <template>
   <div class="sales-container">
+    <!-- Enhanced Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Sales" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><ShoppingCart /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic 
+            title="Total Revenue" 
+            :value="summaryStats.revenue" 
+            prefix="₹"
+            :precision="2"
+          >
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><Money /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Today's Sales" :value="summaryStats.today">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #409eff;"><Calendar /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="sales-card">
       <template #header>
         <div class="card-header">
@@ -14,7 +59,7 @@
       <!-- Devotional Banner -->
       <div class="devotional-banner sales-banner"></div>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -30,6 +75,34 @@
             </el-input>
           </el-col>
           <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-select
+              v-model="statusFilter"
+              placeholder="Filter by Status"
+              clearable
+              @change="handleFilterChange"
+              style="width: 100%"
+            >
+              <el-option label="Any Status" value="" />
+              <el-option label="Completed" value="Completed" />
+              <el-option label="Pending" value="Pending" />
+              <el-option label="Cancelled" value="Cancelled" />
+            </el-select>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Date (Newest)" value="date-desc" />
+              <el-option label="Date (Oldest)" value="date-asc" />
+              <el-option label="Amount (High to Low)" value="amount-desc" />
+              <el-option label="Amount (Low to High)" value="amount-asc" />
+              <el-option label="Recently Added" value="id-desc" />
+            </el-select>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-date-picker
               v-model="dateFilter"
               type="date"
@@ -37,21 +110,10 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               @change="handleDateFilter"
+              style="width: 100%"
             />
           </el-col>
-          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
-            <el-select
-              v-model="statusFilter"
-              placeholder="Filter by Status"
-              clearable
-              @change="handleStatusFilter"
-            >
-              <el-option label="Completed" value="Completed" />
-              <el-option label="Pending" value="Pending" />
-              <el-option label="Cancelled" value="Cancelled" />
-            </el-select>
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
+          <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
             <el-button @click="loadSales" :loading="loading">
               <el-icon><Refresh /></el-icon>
               Refresh
@@ -64,81 +126,39 @@
         </el-row>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <el-row :gutter="20">
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon total">
-                  <el-icon><ShoppingCart /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ totalSales }}</div>
-                  <div class="summary-label">Total Sales</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon revenue">
-                  <el-icon><Money /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">₹{{ totalRevenue.toLocaleString() }}</div>
-                  <div class="summary-label">Total Revenue</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon completed">
-                  <el-icon><Check /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ completedSales }}</div>
-                  <div class="summary-label">Completed</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon pending">
-                  <el-icon><Clock /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ pendingSales }}</div>
-                  <div class="summary-label">Pending</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
-
       <!-- Sales Table -->
       <div class="table-container">
         <el-table
-          :data="sales"
+          :data="paginatedSales"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-        <el-table-column prop="saleDate" label="Sale Date" width="120">
+        <el-table-column 
+          prop="saleDate" 
+          label="Sale Date" 
+          width="120"
+          sortable="custom"
+        >
           <template #default="scope">
             {{ formatDate(scope.row.saleDate) }}
           </template>
         </el-table-column>
-        <el-table-column prop="customerName" label="Customer" min-width="150" />
+        <el-table-column 
+          prop="customerName" 
+          label="Customer" 
+          min-width="150" 
+          sortable="custom"
+        />
         <el-table-column prop="customerPhone" label="Phone" width="120" />
-        <el-table-column prop="totalAmount" label="Total Amount" width="120">
+        <el-table-column 
+          prop="totalAmount" 
+          label="Total Amount" 
+          width="120"
+          sortable="custom"
+        >
           <template #default="scope">
             ₹{{ scope.row.totalAmount.toLocaleString() }}
           </template>
@@ -148,7 +168,12 @@
             ₹{{ scope.row.discountAmount.toLocaleString() }}
           </template>
         </el-table-column>
-        <el-table-column prop="finalAmount" label="Final Amount" width="120">
+        <el-table-column 
+          prop="finalAmount" 
+          label="Final Amount" 
+          width="120"
+          sortable="custom"
+        >
           <template #default="scope">
             ₹{{ scope.row.finalAmount.toLocaleString() }}
           </template>
@@ -194,13 +219,14 @@
         </el-table>
       </div>
 
-      <!-- Pagination -->
+      <!-- Enhanced Pagination -->
       <div class="pagination-container">
         <el-pagination
           :current-page="currentPage"
           :page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="totalSales"
+          :total="filteredBeforePagination.length"
+          :background="true"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
@@ -212,28 +238,31 @@
     <el-dialog
       v-model="showCreateDialog"
       :title="editingSale ? 'Edit Sale' : 'New Sale'"
-      width="800px"
+      :width="isMobileDialog ? '100%' : '85%'"
+      :fullscreen="isMobileDialog"
+      class="sale-dialog"
     >
       <el-form
         ref="saleFormRef"
         :model="saleForm"
         :rules="saleRules"
-        label-width="120px"
+        :label-width="formLabelWidth"
+        :label-position="labelPosition"
       >
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Customer Name" prop="customerName">
               <el-input v-model="saleForm.customerName" placeholder="Enter customer name" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Customer Phone" prop="customerPhone">
               <el-input v-model="saleForm.customerPhone" placeholder="Enter phone number" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Sale Date" prop="saleDate">
               <el-date-picker
                 v-model="saleForm.saleDate"
@@ -245,7 +274,7 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Payment Method" prop="paymentMethod">
               <el-select v-model="saleForm.paymentMethod" placeholder="Select payment method" style="width: 100%">
                 <el-option label="Cash" value="Cash" />
@@ -257,7 +286,7 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Discount Amount" prop="discountAmount">
               <el-input-number
                 v-model="saleForm.discountAmount"
@@ -268,7 +297,7 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Status" prop="status">
               <el-select v-model="saleForm.status" placeholder="Select status" style="width: 100%">
                 <el-option label="Completed" value="Completed" />
@@ -283,13 +312,15 @@
         <el-divider content-position="left">Sale Items</el-divider>
         <div class="sale-items">
           <div v-for="(item, index) in saleForm.saleItems" :key="index" class="sale-item">
-            <el-row :gutter="20">
-              <el-col :span="8">
+            <el-row :gutter="0" class="sale-item-row">
+              <el-col :xs="24" :sm="24" :md="8" :lg="8">
                 <el-form-item :label="`Product ${index + 1}`" :prop="`saleItems.${index}.productId`">
-                  <el-select
+              <el-select
                     v-model="item.productId"
                     placeholder="Select product"
                     style="width: 100%"
+                filterable
+                clearable
                     @change="updateItemDetails(index)"
                   >
                     <el-option
@@ -301,7 +332,7 @@
                   </el-select>
                 </el-form-item>
               </el-col>
-              <el-col :span="4">
+              <el-col :xs="12" :sm="12" :md="4" :lg="4">
                 <el-form-item :label="`Quantity`" :prop="`saleItems.${index}.quantity`">
                   <el-input-number
                     v-model="item.quantity"
@@ -311,7 +342,7 @@
                   />
                 </el-form-item>
               </el-col>
-              <el-col :span="4">
+              <el-col :xs="12" :sm="12" :md="5" :lg="5">
                 <el-form-item :label="`Price`">
                   <el-input-number
                     v-model="item.unitPrice"
@@ -322,19 +353,19 @@
                   />
                 </el-form-item>
               </el-col>
-              <el-col :span="4">
+              <el-col :xs="12" :sm="12" :md="5" :lg="5">
                 <el-form-item :label="`Total`">
-                  <el-input-number
+              <el-input-number
                     v-model="item.totalPrice"
                     :min="0"
                     :precision="2"
-                    style="width: 100%"
+                style="width: 100%"
                     disabled
                   />
                 </el-form-item>
               </el-col>
-              <el-col :span="4">
-                <el-form-item label="Action">
+              <el-col :xs="24" :sm="12" :md="2" :lg="2" class="action-col">
+                <div class="action-wrap">
                   <el-button
                     type="danger"
                     size="small"
@@ -343,18 +374,30 @@
                   >
                     <el-icon><Delete /></el-icon>
                   </el-button>
-                </el-form-item>
+                </div>
               </el-col>
             </el-row>
           </div>
-          <el-button type="dashed" @click="addSaleItem" style="width: 100%">
+          <el-button class="add-item-btn" type="dashed" @click="addSaleItem">
             <el-icon><Plus /></el-icon>
             Add Item
           </el-button>
         </div>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="Event" prop="eventId">
+              <el-select v-model="saleForm.eventId" placeholder="Select event" style="width: 100%">
+                <el-option
+                  v-for="event in events"
+                  :key="event.id"
+                  :label="event.name"
+                  :value="event.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Total Amount">
               <el-input-number
                 v-model="saleForm.totalAmount"
@@ -365,7 +408,7 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Final Amount">
               <el-input-number
                 v-model="saleForm.finalAmount"
@@ -378,7 +421,7 @@
           </el-col>
         </el-row>
         
-        <el-form-item label="Notes" prop="notes">
+        <el-form-item label="Notes" prop="notes" :label-width="isMobileDialog ? '100px' : '120px'">
           <el-input
             v-model="saleForm.notes"
             type="textarea"
@@ -401,7 +444,8 @@
     <el-dialog
       v-model="showDetailsDialog"
       title="Sale Details"
-      width="700px"
+      :width="detailsDialogWidth"
+      :fullscreen="isMobileDialog"
     >
       <div v-if="selectedSale" class="sale-details">
         <el-descriptions :column="2" border>
@@ -452,9 +496,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Download, ShoppingCart, Money, Check, Clock, View } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Download, ShoppingCart, Money, Check, Clock, View, Calendar, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
@@ -468,11 +512,36 @@ const dateFilter = ref('')
 const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalSales = ref(0)
+const sortBy = ref('date-desc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const editingSale = ref(null)
 const selectedSale = ref(null)
+const events = ref([])
+
+// Responsive properties
+const windowWidth = ref(window.innerWidth)
+const isMobileDialog = computed(() => windowWidth.value < 768)
+const labelPosition = computed(() => (windowWidth.value < 640 ? 'top' : 'right'))
+const formLabelWidth = computed(() => {
+  if (windowWidth.value < 480) return '85px'
+  if (windowWidth.value < 640) return '100px'
+  return '120px'
+})
+const dialogWidth = computed(() => {
+  const width = windowWidth.value
+  if (width < 576) return '100%'
+  if (width < 768) return '95%'
+  if (width < 992) return '90%'
+  // For desktop, calculate 75% of screen width
+  return Math.min(width * 0.75, 1400) + 'px'
+})
+const detailsDialogWidth = computed(() => {
+  if (windowWidth.value < 576) return '100%'
+  if (windowWidth.value < 768) return '95%'
+  if (windowWidth.value < 992) return '85%'
+  return '700px'
+})
 
 // Form data
 const saleForm = reactive({
@@ -485,6 +554,7 @@ const saleForm = reactive({
   totalAmount: 0,
   finalAmount: 0,
   notes: '',
+  eventId: null,
   saleItems: [
     {
       productId: '',
@@ -508,21 +578,88 @@ const saleRules = {
 const saleFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
 
-// Computed properties
-const totalRevenue = computed(() => {
-  return sales.value
-    .filter(sale => sale.status === 'Completed')
-    .reduce((sum, sale) => sum + sale.finalAmount, 0)
+// Summary Statistics
+const summaryStats = computed(() => {
+  const today = dayjs().format('YYYY-MM-DD')
+  return {
+    total: sales.value.length,
+    revenue: sales.value
+      .filter(s => s.status === 'Completed')
+      .reduce((sum, s) => sum + (s.finalAmount || 0), 0),
+    today: sales.value.filter(s => 
+      dayjs(s.saleDate).format('YYYY-MM-DD') === today
+    ).length
+  }
 })
 
-const completedSales = computed(() => {
-  return sales.value.filter(sale => sale.status === 'Completed').length
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...sales.value]
+
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(s =>
+      s.customerName?.toLowerCase().includes(term) ||
+      s.customerPhone?.includes(term) ||
+      s.notes?.toLowerCase().includes(term)
+    )
+  }
+
+  // Apply status filter
+  if (statusFilter.value) {
+    result = result.filter(s => s.status === statusFilter.value)
+  }
+
+  // Apply date filter
+  if (dateFilter.value) {
+    const filterDate = dayjs(dateFilter.value).format('YYYY-MM-DD')
+    result = result.filter(s => 
+      dayjs(s.saleDate).format('YYYY-MM-DD') === filterDate
+    )
+  }
+
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'date':
+          aVal = new Date(a.saleDate).getTime()
+          bVal = new Date(b.saleDate).getTime()
+          break
+        case 'amount':
+          aVal = a.finalAmount || 0
+          bVal = b.finalAmount || 0
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+
+  return result
 })
 
-const pendingSales = computed(() => {
-  return sales.value.filter(sale => sale.status === 'Pending').length
+// Paginated data
+const paginatedSales = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
 })
 
 // Methods
@@ -531,7 +668,6 @@ const loadSales = async () => {
     loading.value = true
     const response = await axios.get(`${API_BASE}/sales`)
     sales.value = response.data
-    totalSales.value = response.data.length
   } catch (error) {
     console.error('Error loading sales:', error)
     ElMessage.error('Failed to load sales')
@@ -549,48 +685,41 @@ const loadProducts = async () => {
   }
 }
 
-const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchSales(searchTerm.value)
-  } else {
-    loadSales()
+const loadEvents = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/events`)
+    events.value = response.data
+  } catch (error) {
+    console.error('Error loading events:', error)
   }
 }
 
-const searchSales = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/sales/search/${term}`)
-    sales.value = response.data
-    totalSales.value = response.data.length
-  } catch (error) {
-    console.error('Error searching sales:', error)
-    ElMessage.error('Failed to search sales')
-  } finally {
-    loading.value = false
+const handleSearch = () => {
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'date-desc'
+  } else {
+    let field = prop
+    if (prop === 'saleDate') field = 'date'
+    else if (prop === 'totalAmount' || prop === 'finalAmount') field = 'amount'
+    
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
 }
 
 const handleDateFilter = () => {
-  if (dateFilter.value) {
-    const filterDate = dayjs(dateFilter.value)
-    sales.value = sales.value.filter(sale => {
-      const saleDate = dayjs(sale.saleDate)
-      return saleDate.isSame(filterDate, 'day')
-    })
-    totalSales.value = sales.value.length
-  } else {
-    loadSales()
-  }
-}
-
-const handleStatusFilter = () => {
-  if (statusFilter.value) {
-    sales.value = sales.value.filter(sale => sale.status === statusFilter.value)
-    totalSales.value = sales.value.length
-  } else {
-    loadSales()
-  }
+  currentPage.value = 1
 }
 
 const addSaleItem = () => {
@@ -727,6 +856,7 @@ const resetForm = () => {
     totalAmount: 0,
     finalAmount: 0,
     notes: '',
+    eventId: null,
     saleItems: [
       {
         productId: '',
@@ -756,24 +886,52 @@ const getStatusTagType = (status) => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadSales()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadSales()
+}
+
+// Window resize handler
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
 }
 
 // Lifecycle
 onMounted(() => {
   loadSales()
   loadProducts()
+  loadEvents()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
+
 .sales-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
 }
 
 .sales-card {
@@ -793,6 +951,11 @@ onMounted(() => {
 
 .search-filters {
   margin-bottom: 20px;
+}
+
+/* Allow wrapping/spacing for filters on narrow screens */
+.search-filters .el-row {
+  row-gap: 10px;
 }
 
 .summary-cards {
@@ -820,6 +983,7 @@ onMounted(() => {
   font-size: 24px;
   color: white;
 }
+
 
 .summary-icon.total {
   background-color: #409eff;
@@ -856,12 +1020,37 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.sale-items .add-item-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .sale-item {
   margin-bottom: 15px;
   padding: 15px;
   border: 1px solid #e4e7ed;
   border-radius: 4px;
   background-color: #fafafa;
+  overflow: hidden;
+}
+
+/* Ensure row stays inside the sale-item panel borders */
+.sale-item-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.sale-item .action-col {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+.sale-item .action-col .el-form-item__content,
+.sale-item .action-col .action-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 !important;
 }
 
 .pagination-container {
@@ -875,6 +1064,43 @@ onMounted(() => {
 
 .dialog-footer {
   text-align: right;
+}
+
+/* Align InputNumber visuals across the form */
+.sale-dialog .el-input-number {
+  width: 100%;
+}
+.sale-dialog .el-input-number .el-input__wrapper,
+.sale-dialog .el-input .el-input__wrapper {
+  background-color: #fff;
+}
+.sale-dialog .el-input-number .el-input__inner,
+.sale-dialog .el-input .el-input__inner {
+  text-align: left;
+}
+.sale-dialog .el-input-number.is-disabled { opacity: 1; }
+.sale-dialog .el-input-number.is-disabled .el-input__wrapper,
+.sale-dialog .el-input.is-disabled .el-input__wrapper {
+  background-color: #fff !important;
+  color: var(--el-text-color-regular) !important;
+  box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
+}
+
+/* Force sale dialog width */
+.sale-dialog {
+  width: 75% !important;
+  max-width: 1400px !important;
+}
+
+.sale-dialog .el-dialog__body {
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .sale-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 
 .table-container {
@@ -916,6 +1142,107 @@ onMounted(() => {
   .el-button .el-icon + .btn-text {
     margin-left: 6px;
   }
+
+  /* Dialog responsive styles */
+  .el-dialog__body {
+    padding: 10px 15px;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+
+  /* Make dialog scrollable on mobile */
+  .el-dialog.is-fullscreen .el-dialog__body {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .el-form-item__label {
+    font-size: 13px;
+  }
+
+  .sale-items {
+    margin-bottom: 15px;
+  }
+
+  .sale-item {
+    padding: 10px;
+    margin-bottom: 10px;
+  }
+
+  .sale-item-row {
+    row-gap: 10px;
+  }
+
+  /* Adjust form label width for mobile */
+  .el-dialog .el-form .el-form-item__label {
+    width: 100px !important;
+  }
+
+  /* Make descriptions responsive */
+  .el-descriptions .el-descriptions__label {
+    font-size: 12px;
+  }
+  
+  .el-descriptions .el-descriptions__content {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Extra small screen adjustments */
+  .el-dialog .el-form .el-form-item__label {
+    width: auto !important;
+    min-width: 85px;
+    font-size: 12px;
+    text-align: left !important;
+    padding-right: 8px;
+    line-height: 1.2;
+    white-space: normal;
+  }
+
+  .sale-item {
+    padding: 12px;
+  }
+
+  /* Stack form items vertically on very small screens */
+  .sale-item-row { row-gap: 10px; }
+  .sale-item-row .el-form-item { margin-bottom: 10px; }
+
+  /* Adjust button sizes in dialog */
+  .el-dialog .el-button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* Responsive form layout */
+  .el-dialog .el-form-item {
+    margin-bottom: 15px;
+  }
+
+  /* Make date picker responsive */
+  .el-date-editor {
+    width: 100% !important;
+  }
+
+  /* Sale items mobile adjustments */
+  .sale-item-row { padding: 0; }
+
+  .sale-item .el-form-item__label {
+    font-size: 11px;
+  }
+
+  /* Dialog footer responsive */
+  .dialog-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .dialog-footer .el-button {
+    flex: 1;
+    min-width: 80px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -925,6 +1252,21 @@ onMounted(() => {
 
   .el-button span:not(.el-icon) {
     display: none;
+  }
+}
+</style>
+
+<style>
+/* Global styles for sale dialog - not scoped */
+.el-dialog.sale-dialog {
+  width: 85% !important;
+  max-width: 1400px !important;
+}
+
+@media (max-width: 768px) {
+  .el-dialog.sale-dialog {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 </style>

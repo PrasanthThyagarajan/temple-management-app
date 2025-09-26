@@ -13,13 +13,15 @@ namespace TempleApi.Data
         public DbSet<Devotee> Devotees { get; set; }
         public DbSet<Donation> Donations { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<Area> Areas { get; set; }
+        public DbSet<EventType> EventTypes { get; set; }
         public DbSet<EventRegistration> EventRegistrations { get; set; }
         public DbSet<Service> Services { get; set; }
         
         // User Management entities
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
-        public DbSet<Permission> Permissions { get; set; }
+        public DbSet<PagePermission> PagePermissions { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RolePermission> RolePermissions { get; set; }
         
@@ -30,6 +32,12 @@ namespace TempleApi.Data
         public DbSet<SaleItem> SaleItems { get; set; }
         public DbSet<Pooja> Poojas { get; set; }
         public DbSet<PoojaBooking> PoojaBookings { get; set; }
+        public DbSet<Expense> Expenses { get; set; }
+        public DbSet<EventExpense> EventExpenses { get; set; }
+        public DbSet<ExpenseService> ExpenseServices { get; set; }
+        public DbSet<ExpenseApprovalRoleConfiguration> ExpenseApprovalRoleConfigurations { get; set; }
+        public DbSet<EventApprovalRoleConfiguration> EventApprovalRoleConfigurations { get; set; }
+        public DbSet<Voucher> Vouchers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -40,11 +48,13 @@ namespace TempleApi.Data
             modelBuilder.Entity<Devotee>().ToTable("Devotees");
             modelBuilder.Entity<Donation>().ToTable("Donations");
             modelBuilder.Entity<Event>().ToTable("Events");
+            modelBuilder.Entity<Area>().ToTable("Areas");
+            modelBuilder.Entity<EventType>().ToTable("EventTypes");
             modelBuilder.Entity<EventRegistration>().ToTable("EventRegistrations");
             modelBuilder.Entity<Service>().ToTable("Services");
             modelBuilder.Entity<User>().ToTable("Users");
             modelBuilder.Entity<Role>().ToTable("Roles");
-            modelBuilder.Entity<Permission>().ToTable("Permissions");
+            modelBuilder.Entity<PagePermission>().ToTable("PagePermissions");
             modelBuilder.Entity<UserRole>().ToTable("UserRoles");
             modelBuilder.Entity<RolePermission>().ToTable("RolePermissions");
             modelBuilder.Entity<Category>().ToTable("Categories");
@@ -53,6 +63,25 @@ namespace TempleApi.Data
             modelBuilder.Entity<SaleItem>().ToTable("SaleItems");
             modelBuilder.Entity<Pooja>().ToTable("Poojas");
             modelBuilder.Entity<PoojaBooking>().ToTable("PoojaBookings");
+            modelBuilder.Entity<Expense>().ToTable("Expenses");
+            modelBuilder.Entity<ExpenseService>().ToTable("ExpenseServices");
+            modelBuilder.Entity<ExpenseApprovalRoleConfiguration>().ToTable("ExpenseApprovalRoleConfigurations");
+            modelBuilder.Entity<EventApprovalRoleConfiguration>().ToTable("EventApprovalRoleConfigurations");
+            modelBuilder.Entity<EventApprovalRoleConfiguration>(entity =>
+            {
+                entity.Property(e => e.EventId).IsRequired();
+                entity.Property(e => e.UserRoleId).IsRequired();
+
+                entity.HasOne(e => e.Event)
+                    .WithMany()
+                    .HasForeignKey(e => e.EventId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.UserRole)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserRoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // Note: Do not map BaseEntity as a concrete table. Derived entities inherit its properties.
 
@@ -67,8 +96,7 @@ namespace TempleApi.Data
             // Devotee configuration
             modelBuilder.Entity<Devotee>(entity =>
             {
-                entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.TempleId).IsRequired();
                 
                 entity.HasOne(e => e.Temple)
@@ -101,17 +129,42 @@ namespace TempleApi.Data
             // Event configuration
             modelBuilder.Entity<Event>(entity =>
             {
-                entity.Property(e => e.TempleId).IsRequired();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
                 entity.Property(e => e.StartDate).IsRequired();
                 entity.Property(e => e.EndDate).IsRequired();
-                entity.Property(e => e.EventType).IsRequired().HasMaxLength(100);
-                entity.Property(e => e.Status).HasDefaultValue("Scheduled");
-                
-                entity.HasOne(e => e.Temple)
-                    .WithMany(e => e.Events)
-                    .HasForeignKey(e => e.TempleId)
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.IsApprovalNeeded).HasDefaultValue(false);
+
+                entity.HasOne(e => e.Area)
+                    .WithMany(a => a.Events)
+                    .HasForeignKey(e => e.AreaId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne(e => e.EventType)
+                    .WithMany(t => t.Events)
+                    .HasForeignKey(e => e.EventTypeId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // Denormalized for legacy compatibility: keep optional Location text
+            });
+
+            // Area configuration
+            modelBuilder.Entity<Area>(entity =>
+            {
+                entity.Property(a => a.TempleId).IsRequired();
+                entity.Property(a => a.Name).IsRequired().HasMaxLength(200);
+
+                entity.HasOne(a => a.Temple)
+                    .WithMany(t => t.Areas)
+                    .HasForeignKey(a => a.TempleId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // EventType configuration
+            modelBuilder.Entity<EventType>(entity =>
+            {
+                entity.Property(t => t.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(t => t.Name).IsUnique();
             });
 
             // EventRegistration configuration
@@ -155,6 +208,9 @@ namespace TempleApi.Data
                 entity.Property(e => e.Username).IsRequired().HasMaxLength(50);
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.FullName).IsRequired().HasMaxLength(100);
+                entity.Property(e => e.PhoneNumber).HasMaxLength(20);
+                entity.Property(e => e.Gender).HasMaxLength(20);
+                entity.Property(e => e.Address).HasMaxLength(200);
                 entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(255);
                 entity.Property(e => e.IsActive).HasDefaultValue(true);
                 
@@ -171,13 +227,16 @@ namespace TempleApi.Data
                 entity.HasIndex(e => e.RoleName).IsUnique();
             });
 
-            // Permission configuration
-            modelBuilder.Entity<Permission>(entity =>
+            // PagePermission configuration
+            modelBuilder.Entity<PagePermission>(entity =>
             {
-                entity.Property(e => e.PermissionName).IsRequired().HasMaxLength(50);
-                entity.Property(e => e.Description).HasMaxLength(200);
+                entity.Property(e => e.PageName).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.PageUrl).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.PermissionId).IsRequired();
                 
-                entity.HasIndex(e => e.PermissionName).IsUnique();
+                // Create composite unique constraint on PageName + PermissionId
+                entity.HasIndex(e => new { e.PageName, e.PermissionId }).IsUnique();
+                entity.Ignore(e => e.Permission); // Ignore the computed property
             });
 
             // UserRole configuration
@@ -208,12 +267,12 @@ namespace TempleApi.Data
                     .HasForeignKey(e => e.RoleId)
                     .OnDelete(DeleteBehavior.Cascade);
                 
-                entity.HasOne(e => e.Permission)
+                entity.HasOne(e => e.PagePermission)
                     .WithMany(e => e.RolePermissions)
-                    .HasForeignKey(e => e.PermissionId)
+                    .HasForeignKey(e => e.PagePermissionId)
                     .OnDelete(DeleteBehavior.Cascade);
                 
-                entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
+                entity.HasIndex(e => new { e.RoleId, e.PagePermissionId }).IsUnique();
             });
 
             // Category configuration
@@ -266,6 +325,11 @@ namespace TempleApi.Data
                 //     .WithMany()
                 //     .HasForeignKey(e => e.StaffId)
                 //     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(e => e.Event)
+                    .WithMany()
+                    .HasForeignKey(e => e.EventId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // SaleItem configuration
@@ -322,6 +386,85 @@ namespace TempleApi.Data
                 //     .HasForeignKey(e => e.StaffId)
                 //     .OnDelete(DeleteBehavior.SetNull);
             });
+
+        // EventExpense configuration
+        modelBuilder.Entity<EventExpense>(entity =>
+        {
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsApprovalNeeded).HasDefaultValue(false);
+
+            entity.HasOne(e => e.ApprovalRole)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovalRoleId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ExpenseService configuration
+        modelBuilder.Entity<ExpenseService>(entity =>
+        {
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            entity.Property(e => e.IsApprovalNeeded).HasDefaultValue(false);
+
+            entity.HasOne(e => e.ApprovalRole)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovalRoleId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // EventExpense (Expense) configuration
+        modelBuilder.Entity<Expense>(entity =>
+        {
+            // Either EventExpenseId or ExpenseServiceId should be present
+
+            entity.HasOne(e => e.EventExpense)
+                .WithMany()
+                .HasForeignKey(e => e.EventExpenseId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            entity.HasOne(e => e.ExpenseService)
+                .WithMany()
+                .HasForeignKey(e => e.ExpenseServiceId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            // Make EventId required foreign key for Event Expenses
+            entity.Property(e => e.EventId).IsRequired();
+            entity.HasOne(e => e.Event)
+                .WithMany()
+                .HasForeignKey(e => e.EventId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Approval configuration
+            entity.Property(e => e.IsApprovalNeed).HasDefaultValue(false);
+            entity.Property(e => e.IsApproved).HasDefaultValue(false);
+            entity.HasOne(e => e.RequestedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.RequestedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.ApprovedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.ApprovedBy)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+            // ExpenseApprovalRoleConfiguration configuration
+            modelBuilder.Entity<ExpenseApprovalRoleConfiguration>(entity =>
+            {
+                entity.Property(e => e.UserRoleId).IsRequired();
+                entity.Property(e => e.EventExpenseId).IsRequired();
+
+                entity.HasOne(e => e.UserRole)
+                    .WithMany()
+                    .HasForeignKey(e => e.UserRoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(e => e.EventExpense)
+                    .WithMany()
+                    .HasForeignKey(e => e.EventExpenseId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
         }
 
         public override int SaveChanges()

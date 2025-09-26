@@ -4,8 +4,7 @@ namespace TempleApi.Models.DTOs
 {
     public class CreateEventDto
     {
-        [Required]
-        public int TempleId { get; set; }
+        public int? AreaId { get; set; }
         
         [Required]
         [StringLength(200)]
@@ -24,11 +23,16 @@ namespace TempleApi.Models.DTOs
         public string? Location { get; set; }
         
         [Required]
-        [StringLength(100)]
-        public string EventType { get; set; } = string.Empty;
+        public int EventTypeId { get; set; }
         
         public int? MaxAttendees { get; set; }
         
         public decimal? RegistrationFee { get; set; }
+
+        public bool IsApprovalNeeded { get; set; } = false;
+
+        [Required]
+        [StringLength(50)]
+        public string Status { get; set; } = string.Empty;
     }
 }

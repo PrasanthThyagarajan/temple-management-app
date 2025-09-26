@@ -12,13 +12,13 @@ namespace TempleApi.Domain.Entities
         public int RoleId { get; set; }
 
         [Required]
-        public int PermissionId { get; set; }
+        public int PagePermissionId { get; set; }
 
         // Navigation properties
         [ForeignKey("RoleId")]
         public virtual Role Role { get; set; } = null!;
 
-        [ForeignKey("PermissionId")]
-        public virtual Permission Permission { get; set; } = null!;
+        [ForeignKey("PagePermissionId")]
+        public virtual PagePermission PagePermission { get; set; } = null!;
     }
 }

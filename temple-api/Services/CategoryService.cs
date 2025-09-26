@@ -46,7 +46,7 @@ namespace TempleApi.Services
             var category = new Category
             {
                 Name = createDto.Name,
-                Description = createDto.Description,
+                Description = createDto.Description ?? string.Empty,
                 IsActive = createDto.IsActive,
                 SortOrder = createDto.SortOrder
             };
@@ -73,7 +73,7 @@ namespace TempleApi.Services
             }
 
             category.Name = updateDto.Name;
-            category.Description = updateDto.Description;
+            category.Description = updateDto.Description ?? string.Empty;
             category.IsActive = updateDto.IsActive;
             category.SortOrder = updateDto.SortOrder;
             category.UpdatedAt = DateTime.UtcNow;
@@ -135,7 +135,7 @@ namespace TempleApi.Services
                 throw new ArgumentException("Category name cannot exceed 100 characters.", nameof(dto.Name));
             }
 
-            if (dto.Description.Length > 500)
+            if (!string.IsNullOrEmpty(dto.Description) && dto.Description.Length > 500)
             {
                 throw new ArgumentException("Category description cannot exceed 500 characters.", nameof(dto.Description));
             }

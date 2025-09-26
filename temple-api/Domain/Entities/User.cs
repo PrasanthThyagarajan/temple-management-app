@@ -25,12 +25,26 @@ namespace TempleApi.Domain.Entities
         [MaxLength(100)]
         public string FullName { get; set; } = string.Empty;
 
+        [MaxLength(20)]
+        public string? PhoneNumber { get; set; }
+
+        [MaxLength(20)]
+        public string? Gender { get; set; }
+
+        [MaxLength(200)]
+        public string? Address { get; set; }
+
         public new bool IsActive { get; set; } = true;
 
         public bool IsVerified { get; set; } = false;
 
         [MaxLength(100)]
         public string VerificationCode { get; set; } = string.Empty;
+
+        [MaxLength(50)]
+        public string? Nakshatra { get; set; }
+
+        public DateTime? DateOfBirth { get; set; }
 
         // Navigation properties
         public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();

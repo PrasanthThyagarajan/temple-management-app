@@ -38,7 +38,7 @@ namespace TempleApi.Tests
         {
             // Arrange
             var role = new Role { RoleId = 1, RoleName = "Admin" };
-            _roleRepositoryMock.Setup(repo => repo.AddAsync(role)).Returns(Task.CompletedTask);
+            _roleRepositoryMock.Setup(repo => repo.AddAsync(role)).ReturnsAsync(role);
 
             // Act
             var result = await _roleService.CreateRoleAsync(role);

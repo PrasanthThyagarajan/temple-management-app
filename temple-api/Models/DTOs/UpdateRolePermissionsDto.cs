@@ -8,7 +8,7 @@ namespace TempleApi.Models.DTOs
         public int RoleId { get; set; }
 
         [Required]
-        public List<int> PermissionIds { get; set; } = new();
+        public List<int> PagePermissionIds { get; set; } = new();
     }
 }
 

@@ -12,5 +12,6 @@ namespace TempleApi.Services.Interfaces
         Task<UserDto> UpdateUserAsync(int id, CreateUserDto updateUserDto);
         Task<bool> DeleteUserAsync(int id);
         Task<bool> ValidateUserCredentialsAsync(string email, string password);
+        Task<string> ResetPasswordAsync(int userId);
     }
 }

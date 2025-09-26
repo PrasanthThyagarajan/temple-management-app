@@ -1,5 +1,45 @@
 <template>
   <div class="products-container">
+    <!-- Enhanced Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Products" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><Box /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card active">
+          <el-statistic title="Active Products" :value="summaryStats.active">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><Check /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Out of Stock" :value="summaryStats.outOfStock">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #f56c6c;"><Warning /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="products-card">
       <template #header>
         <div class="card-header">
@@ -14,7 +54,7 @@
       <!-- Devotional Banner -->
       <div class="devotional-banner products-banner"></div>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
@@ -34,8 +74,10 @@
               v-model="categoryFilter"
               placeholder="Filter by Category"
               clearable
-              @change="handleCategoryFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Category" value="" />
               <el-option
                 v-for="cat in categories"
                 :key="cat.id"
@@ -49,14 +91,30 @@
               v-model="statusFilter"
               placeholder="Filter by Status"
               clearable
-              @change="handleStatusFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Status" value="" />
               <el-option label="Active" value="Active" />
               <el-option label="Inactive" value="Inactive" />
               <el-option label="Out of Stock" value="Out of Stock" />
             </el-select>
           </el-col>
-          <el-col :xs="24" :sm="24" :md="10" :lg="10" :xl="10">
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Name (A-Z)" value="name-asc" />
+              <el-option label="Name (Z-A)" value="name-desc" />
+              <el-option label="Price (Low to High)" value="price-asc" />
+              <el-option label="Price (High to Low)" value="price-desc" />
+              <el-option label="Recently Added" value="id-desc" />
+            </el-select>
+          </el-col>
+          <el-col :xs="24" :sm="24" :md="8" :lg="8" :xl="8">
             <div class="action-buttons">
               <el-button @click="loadProducts" :loading="loading" class="refresh-btn">
                 <el-icon><Refresh /></el-icon>
@@ -71,68 +129,11 @@
         </el-row>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <el-row :gutter="20">
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon total">
-                  <el-icon><Box /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ totalProducts }}</div>
-                  <div class="summary-label">Total Products</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon active">
-                  <el-icon><Check /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ activeProducts }}</div>
-                  <div class="summary-label">Active</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon low-stock">
-                  <el-icon><Warning /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ lowStockProducts }}</div>
-                  <div class="summary-label">Low Stock</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon out-of-stock">
-                  <el-icon><Close /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ outOfStockProducts }}</div>
-                  <div class="summary-label">Out of Stock</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
 
       <!-- Grid View -->
       <div v-if="showGridView" class="grid-view">
         <el-row :gutter="20">
-          <el-col :xs="12" :sm="8" :md="6" :lg="6" :xl="6" v-for="product in products" :key="product.id">
+          <el-col :xs="12" :sm="8" :md="6" :lg="6" :xl="6" v-for="product in paginatedProducts" :key="product.id">
             <el-card class="product-card" @click="viewProduct(product)">
               <div class="product-image">
                 <el-icon class="product-icon"><Box /></el-icon>
@@ -154,19 +155,37 @@
       <!-- Table View -->
       <div v-else class="table-container">
         <el-table
-          :data="products"
+          :data="paginatedProducts"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-          <el-table-column prop="name" label="Product Name" min-width="200" show-overflow-tooltip />
-          <el-table-column prop="category" label="Category" width="120" show-overflow-tooltip>
+          <el-table-column 
+            prop="name" 
+            label="Product Name" 
+            min-width="200" 
+            show-overflow-tooltip 
+            sortable="custom"
+          />
+          <el-table-column 
+            prop="category" 
+            label="Category" 
+            width="120" 
+            show-overflow-tooltip
+            sortable="custom"
+          >
             <template #default="scope">
               {{ scope.row.category || scope.row.categoryNavigation?.name }}
             </template>
           </el-table-column>
-          <el-table-column prop="price" label="Price" width="100">
+          <el-table-column 
+            prop="price" 
+            label="Price" 
+            width="100"
+            sortable="custom"
+          >
             <template #default="scope">
               ₹{{ scope.row.price.toLocaleString() }}
             </template>
@@ -220,13 +239,14 @@
         </el-table>
       </div>
 
-        <!-- Pagination -->
+        <!-- Enhanced Pagination -->
         <div class="pagination-container">
           <el-pagination
             :current-page="currentPage"
             :page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
-            :total="totalProducts"
+            :total="filteredBeforePagination.length"
+            :background="true"
             layout="total, sizes, prev, pager, next, jumper"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
@@ -238,13 +258,14 @@
     <el-dialog
       v-model="showCreateDialog"
       :title="editingProduct ? 'Edit Product' : 'Add New Product'"
-      width="600px"
+      :width="dialogWidth"
+      :fullscreen="isMobileDialog"
     >
       <el-form
         ref="productFormRef"
         :model="productForm"
         :rules="productRules"
-        label-width="120px"
+        :label-width="isMobileDialog ? '100px' : '120px'"
       >
         <el-form-item label="Product Name" prop="name">
           <el-input v-model="productForm.name" placeholder="Enter product name" />
@@ -261,7 +282,7 @@
         </el-form-item>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Price" prop="price">
               <el-input-number
                 v-model="productForm.price"
@@ -284,7 +305,7 @@
           </el-col>
         </el-row>
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
             <el-form-item label="Min Stock Level" prop="minStockLevel">
               <el-input-number
                 v-model="productForm.minStockLevel"
@@ -335,7 +356,8 @@
     <el-dialog
       v-model="showDetailsDialog"
       title="Product Details"
-      width="600px"
+      :width="dialogWidth"
+      :fullscreen="isMobileDialog"
     >
       <div v-if="selectedProduct" class="product-details">
         <el-descriptions :column="2" border>
@@ -367,15 +389,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Grid, Box, Check, Warning, Close } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Grid, Box, Check, Warning, Close, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 // Reactive data
 const products = ref([])
 const categories = ref([])
-
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
@@ -383,12 +404,22 @@ const categoryFilter = ref(null)
 const statusFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalProducts = ref(0)
+const sortBy = ref('name-asc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const showGridView = ref(false)
 const editingProduct = ref(null)
 const selectedProduct = ref(null)
+
+// Responsive properties
+const windowWidth = ref(window.innerWidth)
+const isMobileDialog = computed(() => windowWidth.value < 768)
+const dialogWidth = computed(() => {
+  if (windowWidth.value < 576) return '100%'
+  if (windowWidth.value < 768) return '95%'
+  if (windowWidth.value < 992) return '90%'
+  return '600px'
+})
 
 // Form data
 const productForm = reactive({
@@ -418,21 +449,91 @@ const productRules = {
 const productFormRef = ref()
 
 // API base URL
-const API_BASE = 'http://localhost:5051/api'
+const API_BASE = '/api'
 
-// Computed properties
-const activeProducts = computed(() => {
-  return products.value.filter(product => product.status === 'Active').length
+// Summary Statistics
+const summaryStats = computed(() => {
+  return {
+    total: products.value.length,
+    active: products.value.filter(p => p.status === 'Active').length,
+    outOfStock: products.value.filter(p => p.status === 'Out of Stock').length,
+    lowStock: products.value.filter(p => 
+      p.status === 'Active' && p.stockQuantity <= p.minStockLevel
+    ).length
+  }
 })
 
-const lowStockProducts = computed(() => {
-  return products.value.filter(product => 
-    product.status === 'Active' && product.stockQuantity <= product.minStockLevel
-  ).length
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...products.value]
+
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(p =>
+      p.name?.toLowerCase().includes(term) ||
+      p.description?.toLowerCase().includes(term) ||
+      p.category?.toLowerCase().includes(term) ||
+      p.categoryNavigation?.name?.toLowerCase().includes(term)
+    )
+  }
+
+  // Apply category filter
+  if (categoryFilter.value) {
+    result = result.filter(p => {
+      if (p.categoryId != null) return p.categoryId === categoryFilter.value
+      if (p.category) {
+        const match = categories.value.find(c => c.id === categoryFilter.value)
+        return match ? p.category === match.name : false
+      }
+      return false
+    })
+  }
+
+  // Apply status filter
+  if (statusFilter.value) {
+    result = result.filter(p => p.status === statusFilter.value)
+  }
+
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'name':
+          aVal = (a.name || '').toLowerCase()
+          bVal = (b.name || '').toLowerCase()
+          break
+        case 'price':
+          aVal = a.price || 0
+          bVal = b.price || 0
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+
+  return result
 })
 
-const outOfStockProducts = computed(() => {
-  return products.value.filter(product => product.status === 'Out of Stock').length
+// Paginated data
+const paginatedProducts = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
 })
 
 // Methods
@@ -441,7 +542,6 @@ const loadProducts = async () => {
     loading.value = true
     const response = await axios.get(`${API_BASE}/products`)
     products.value = response.data
-    totalProducts.value = response.data.length
   } catch (error) {
     console.error('Error loading products:', error)
     ElMessage.error('Failed to load products')
@@ -460,54 +560,27 @@ const loadCategories = async () => {
   }
 }
 
-
-
 const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchProducts(searchTerm.value)
-  } else {
-    loadProducts()
-  }
+  currentPage.value = 1
 }
 
-const searchProducts = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/products/search/${term}`)
-    products.value = response.data
-    totalProducts.value = response.data.length
-  } catch (error) {
-    console.error('Error searching products:', error)
-    ElMessage.error('Failed to search products')
-  } finally {
-    loading.value = false
-  }
+const handleFilterChange = () => {
+  currentPage.value = 1
 }
 
-const handleCategoryFilter = () => {
-  if (categoryFilter.value) {
-    // Prefer filtering by CategoryId when available; fallback to Category name
-    const selected = categoryFilter.value
-    products.value = products.value.filter(product => {
-      if (product.categoryId != null) return product.categoryId === selected
-      if (product.category) {
-        const match = categories.value.find(c => c.id === selected)
-        return match ? product.category === match.name : false
-      }
-      return false
-    })
-    totalProducts.value = products.value.length
-  } else {
-    loadProducts()
-  }
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
 }
 
-const handleStatusFilter = () => {
-  if (statusFilter.value) {
-    products.value = products.value.filter(product => product.status === statusFilter.value)
-    totalProducts.value = products.value.length
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'name-asc'
   } else {
-    loadProducts()
+    let field = prop
+    if (prop === 'price') field = 'price'
+    else if (prop === 'name') field = 'name'
+    
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
 }
 
@@ -629,24 +702,54 @@ const getStatusTagType = (status) => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadProducts()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadProducts()
+}
+
+// Window resize handler
+const handleResize = () => {
+  windowWidth.value = window.innerWidth
 }
 
 // Lifecycle
 onMounted(() => {
   loadProducts()
   loadCategories()
+  window.addEventListener('resize', handleResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
 .products-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
+}
+
+.summary-card.active {
+  border-left: 4px solid #67c23a;
 }
 
 .products-card {
@@ -666,6 +769,11 @@ onMounted(() => {
 
 .search-filters {
   margin-bottom: 20px;
+}
+
+/* Ensure filter rows wrap nicely on smaller widths */
+.search-filters .el-row {
+  row-gap: 10px;
 }
 
 .summary-cards {
@@ -850,13 +958,13 @@ onMounted(() => {
   
   .action-buttons {
     flex-direction: row;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    gap: 5px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   
   .action-buttons .el-button {
-    width: 100%;
+    flex: 1 1 48%;
+    min-width: 140px;
     font-size: 12px;
   }
   
@@ -915,6 +1023,37 @@ onMounted(() => {
   
   .pagination-container .el-pagination {
     justify-content: center;
+  }
+
+  /* Dialog responsive styles */
+  .el-dialog__body {
+    padding: 10px 15px;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+  }
+
+  /* Make dialog scrollable on mobile */
+  .el-dialog.is-fullscreen .el-dialog__body {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .el-form-item__label {
+    font-size: 13px;
+  }
+
+  /* Adjust form label width for mobile */
+  .el-dialog .el-form .el-form-item__label {
+    width: 100px !important;
+  }
+
+  /* Make descriptions responsive */
+  .el-descriptions .el-descriptions__label {
+    font-size: 12px;
+  }
+  
+  .el-descriptions .el-descriptions__content {
+    font-size: 12px;
   }
 }
 
@@ -980,6 +1119,31 @@ onMounted(() => {
     min-width: 28px;
     height: 28px;
     line-height: 28px;
+  }
+
+  /* Extra small screen dialog adjustments */
+  .el-dialog .el-form .el-form-item__label {
+    width: 80px !important;
+    font-size: 12px;
+    text-align: left !important;
+  }
+
+  /* Responsive form layout */
+  .el-dialog .el-form-item {
+    margin-bottom: 15px;
+  }
+
+  /* Dialog footer responsive */
+  .dialog-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .dialog-footer .el-button {
+    flex: 1;
+    min-width: 80px;
   }
 }
 

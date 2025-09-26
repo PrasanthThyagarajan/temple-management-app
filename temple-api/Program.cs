@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.Authentication;
+using TempleApi.Security;
 using Serilog;
 using TempleApi.Data;
 using TempleApi.Repositories.Interfaces;
@@ -14,7 +16,9 @@ using TempleApi.Models.DTOs;
 using TempleApi.Configuration;
 using TempleApi.Enums;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +45,16 @@ var provider = Enum.Parse<DatabaseProvider>(databaseSettings?.Provider ?? "Postg
 var connectionString = databaseSettings?.ConnectionString ?? 
     builder.Configuration.GetConnectionString(provider.ToString()) ??
     builder.Configuration.GetConnectionString("PostgreSQL");
+
+// Ensure SQLite database directory exists when using a relative path like "Database/..."
+if (provider == DatabaseProvider.SQLite)
+{
+    var dbDir = System.IO.Path.Combine(builder.Environment.ContentRootPath, "Database");
+    if (!System.IO.Directory.Exists(dbDir))
+    {
+        System.IO.Directory.CreateDirectory(dbDir);
+    }
+}
 
 switch (provider)
 {
@@ -89,12 +103,17 @@ switch (provider)
 }
 
 // Register repositories
+builder.Services.AddScoped(typeof(IRepository<>), typeof(TempleApi.Repositories.Repository<>));
 builder.Services.AddScoped<IRepository<Temple>, TempleApi.Repositories.Repository<Temple>>();
 builder.Services.AddScoped<IRepository<Devotee>, TempleApi.Repositories.Repository<Devotee>>();
 builder.Services.AddScoped<IRepository<Donation>, TempleApi.Repositories.Repository<Donation>>();
 builder.Services.AddScoped<IRepository<Event>, TempleApi.Repositories.Repository<Event>>();
 builder.Services.AddScoped<IRepository<EventRegistration>, TempleApi.Repositories.Repository<EventRegistration>>();
 builder.Services.AddScoped<IRepository<Service>, TempleApi.Repositories.Repository<Service>>();
+builder.Services.AddScoped<TempleApi.Repositories.Interfaces.IRepository<TempleApi.Domain.Entities.ExpenseService>, TempleApi.Repositories.Repository<TempleApi.Domain.Entities.ExpenseService>>();
+builder.Services.AddScoped<IRepository<User>, TempleApi.Repositories.Repository<User>>();
+builder.Services.AddScoped<IRepository<TempleApi.Domain.Entities.UserRole>, TempleApi.Repositories.Repository<TempleApi.Domain.Entities.UserRole>>();
+builder.Services.AddScoped<IRepository<Role>, TempleApi.Repositories.Repository<Role>>();
 
 // Shop Management repositories
 builder.Services.AddScoped<IUserRepository, TempleApi.Repositories.UserRepository>();
@@ -115,6 +134,8 @@ builder.Services.AddScoped<ITempleService, TempleService>();
 builder.Services.AddScoped<IDevoteeService, DevoteeService>();
 builder.Services.AddScoped<IDonationService, DonationService>();
 builder.Services.AddScoped<IEventService, EventService>();
+builder.Services.AddScoped<IAreaService, AreaService>();
+builder.Services.AddScoped<IEventTypeService, EventTypeService>();
 
 // Authentication services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -126,6 +147,10 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPoojaService, PoojaService>();
 builder.Services.AddScoped<IPoojaBookingService, PoojaBookingService>();
+builder.Services.AddScoped<IExpenseService, TempleApi.Services.ExpenseService>();
+builder.Services.AddScoped<IEventExpenseService, EventExpenseService>();
+builder.Services.AddScoped<IExpenseServiceService, TempleApi.Services.ExpenseServiceService>();
+builder.Services.AddScoped<IVoucherService, VoucherService>();
 
 // Jyotisham API service
 builder.Services.AddHttpClient<IJyotishamApiService, JyotishamApiService>();
@@ -145,23 +170,9 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add JWT Authentication
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(
-                builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not configured"))),
-            ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.Zero
-        };
-    });
+// Replace JWT with Basic Authentication
+builder.Services.AddAuthentication("BasicAuthentication")
+	.AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 
 builder.Services.AddAuthorization(options =>
 {
@@ -178,8 +189,18 @@ builder.Services.AddAuthorization(options =>
 // Add Controllers with JSON options to prevent reference loops
 builder.Services.AddControllers().AddJsonOptions(options =>
 {
+    // Avoid $id/$ref payloads that break simple clients; ignore cycles instead
     options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
     options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+});
+
+// Configure JSON options for minimal APIs
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
 // Add Swagger
@@ -193,9 +214,13 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    // Avoid redirecting to HTTPS in dev to keep proxy/simple http working
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowVueApp");
 
 // Add authentication and authorization middleware
@@ -210,7 +235,8 @@ using (var scope = app.Services.CreateScope())
     
     try
     {
-        var hasAnyMigrations = context.Database.GetMigrations().Any();
+        var isRelational = context.Database.IsRelational();
+        var hasAnyMigrations = isRelational && context.Database.GetMigrations().Any();
 
         if (databaseSettings?.EnableMigrations == true && hasAnyMigrations)
         {
@@ -226,6 +252,11 @@ using (var scope = app.Services.CreateScope())
 
             try
             {
+                if (!isRelational)
+                {
+                    // Skip relational-only operations for InMemory provider
+                    goto SeedData;
+                }
                 var databaseCreator = (IRelationalDatabaseCreator)context.Database.GetService<IDatabaseCreator>();
 
                 if (!databaseCreator.Exists())
@@ -259,6 +290,7 @@ using (var scope = app.Services.CreateScope())
             }
         }
         
+SeedData:
         // Seed initial data
         var dataSeedingService = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
         await dataSeedingService.SeedDataAsync();
@@ -273,6 +305,290 @@ using (var scope = app.Services.CreateScope())
 
 // Map controllers
 app.MapControllers();
+
+// Auth API endpoints
+app.MapPost("/api/auth/login", async (HttpContext httpContext, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        // If middleware already authenticated the user, use that
+        if (httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+            {
+                return Results.Json(new AuthResponse { Success = false, Message = "Authentication failed" }, statusCode: 401);
+            }
+
+            var userDto = await authService.GetUserByIdAsync(userId);
+            if (userDto == null)
+            {
+                return Results.Json(new AuthResponse { Success = false, Message = "User not found" }, statusCode: 404);
+            }
+
+            var roles = await authService.GetUserRolesAsync(userId);
+            var permissions = await authService.GetUserPermissionsAsync(userId);
+
+            return Results.Ok(new AuthResponse
+            {
+                Success = true,
+                Message = "Login successful",
+                Token = string.Empty,
+                User = userDto,
+                Roles = roles,
+                Permissions = permissions
+            });
+        }
+
+        // Fallback: manually handle Basic header (useful for tests)
+        var authHeader = httpContext.Request.Headers["Authorization"].ToString();
+        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Unauthorized();
+        }
+
+        var encoded = authHeader.Substring("Basic ".Length).Trim();
+        var bytes = Convert.FromBase64String(encoded);
+        var parts = Encoding.UTF8.GetString(bytes).Split(':', 2);
+        if (parts.Length != 2) return Results.Unauthorized();
+
+        var resp = await authService.LoginAsync(new LoginRequest { Username = parts[0], Password = parts[1] });
+        if (!resp.Success || resp.User == null) return Results.Unauthorized();
+
+        return Results.Ok(resp);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in login endpoint");
+        return Results.Json(new AuthResponse
+        {
+            Success = false,
+            Message = "An internal error occurred"
+        }, statusCode: 500);
+    }
+});
+
+app.MapGet("/api/auth/verify", async (string code, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        var ok = await authService.VerifyAsync(code);
+        if (!ok) return Results.BadRequest("Invalid or expired verification code");
+        return Results.Ok(new { message = "Account verified successfully" });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in verify endpoint");
+        return Results.Problem("An internal error occurred", statusCode: 500);
+    }
+});
+
+app.MapPost("/api/auth/register", async (RegisterRequest request, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        var result = await authService.RegisterAsync(request);
+        
+        if (!result.Success)
+        {
+            return Results.BadRequest(result);
+        }
+
+        return Results.Ok(result);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in register endpoint");
+        return Results.Json(new AuthResponse
+        {
+            Success = false,
+            Message = "An internal error occurred"
+        }, statusCode: 500);
+    }
+});
+
+app.MapGet("/api/auth/me", async (HttpContext httpContext, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        // Try claims first
+        var userIdClaim = httpContext.User.FindFirst("userid");
+        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out int userIdFromClaims))
+        {
+            var userDto = await authService.GetUserByIdAsync(userIdFromClaims);
+            return userDto != null ? Results.Ok(userDto) : Results.NotFound();
+        }
+
+        // Fallback: Basic header
+        var authHeader = httpContext.Request.Headers["Authorization"].ToString();
+        if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Unauthorized();
+        }
+        var encoded = authHeader.Substring("Basic ".Length).Trim();
+        var bytes = Convert.FromBase64String(encoded);
+        var parts = Encoding.UTF8.GetString(bytes).Split(':', 2);
+        if (parts.Length != 2) return Results.Unauthorized();
+
+        var resp = await authService.LoginAsync(new LoginRequest { Username = parts[0], Password = parts[1] });
+        if (!resp.Success || resp.User == null) return Results.Unauthorized();
+        return Results.Ok(resp.User);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error getting current user");
+        return Results.Problem("An internal error occurred", statusCode: 500);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/auth/roles", async (HttpContext httpContext, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        // Try claims first
+        var userIdClaim = httpContext.User.FindFirst("userid");
+        int userId;
+        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsed))
+        {
+            userId = parsed;
+        }
+        else
+        {
+            // Fallback: Basic header
+            var authHeader = httpContext.Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Unauthorized();
+            }
+            var encoded = authHeader.Substring("Basic ".Length).Trim();
+            var bytes = Convert.FromBase64String(encoded);
+            var parts = Encoding.UTF8.GetString(bytes).Split(':', 2);
+            if (parts.Length != 2) return Results.Unauthorized();
+            var resp = await authService.LoginAsync(new LoginRequest { Username = parts[0], Password = parts[1] });
+            if (!resp.Success || resp.User == null) return Results.Unauthorized();
+            userId = resp.User.UserId;
+        }
+
+        var roles = await authService.GetUserRolesAsync(userId);
+        return Results.Ok(roles);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error getting user roles");
+        return Results.Problem("An internal error occurred", statusCode: 500);
+    }
+}).RequireAuthorization();
+
+app.MapGet("/api/auth/permissions", async (HttpContext httpContext, IAuthService authService, ILogger<Program> logger) =>
+{
+    try
+    {
+        // Try claims first
+        var userIdClaim = httpContext.User.FindFirst("userid");
+        int userId;
+        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var parsed))
+        {
+            userId = parsed;
+        }
+        else
+        {
+            // Fallback: Basic header
+            var authHeader = httpContext.Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Unauthorized();
+            }
+            var encoded = authHeader.Substring("Basic ".Length).Trim();
+            var bytes = Convert.FromBase64String(encoded);
+            var parts = Encoding.UTF8.GetString(bytes).Split(':', 2);
+            if (parts.Length != 2) return Results.Unauthorized();
+            var resp = await authService.LoginAsync(new LoginRequest { Username = parts[0], Password = parts[1] });
+            if (!resp.Success || resp.User == null) return Results.Unauthorized();
+            userId = resp.User.UserId;
+        }
+
+        var permissions = await authService.GetUserPermissionsAsync(userId);
+        return Results.Ok(permissions);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error getting user permissions");
+        return Results.Problem("An internal error occurred", statusCode: 500);
+    }
+}).RequireAuthorization();
+
+// Remove token validation endpoint in Basic auth mode
+
+// Remove refresh token endpoint in Basic auth mode
+
+// Role API endpoints
+app.MapGet("/api/roles", async (IRoleService roleService) =>
+{
+    var roles = await roleService.GetAllRolesAsync();
+    return Results.Ok(roles);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapGet("/api/roles/{id:int}", async (int id, IRoleService roleService) =>
+{
+    var role = await roleService.GetRoleByIdAsync(id);
+    if (role == null) return Results.NotFound();
+    return Results.Ok(role);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapPost("/api/roles", async (Role role, IRoleService roleService) =>
+{
+    var created = await roleService.CreateRoleAsync(role);
+    return Results.Created($"/api/roles/{created.RoleId}", created);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapPut("/api/roles/{id:int}", async (int id, Role role, IRoleService roleService) =>
+{
+    if (id != role.RoleId) return Results.BadRequest();
+    var updated = await roleService.UpdateRoleAsync(role);
+    return Results.Ok(updated);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapDelete("/api/roles/{id:int}", async (int id, IRoleService roleService) =>
+{
+    var ok = await roleService.DeleteRoleAsync(id);
+    if (!ok) return Results.NotFound();
+    return Results.NoContent();
+}).RequireAuthorization("UserRoleConfiguration");
+
+// UserRole API endpoints
+app.MapGet("/api/userroles", async (IUserRoleService userRoleService) =>
+{
+    var userRoles = await userRoleService.GetAllUserRolesAsync();
+    return Results.Ok(userRoles);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapPost("/api/userroles", async (TempleApi.Domain.Entities.UserRole userRole, IUserRoleService userRoleService) =>
+{
+    var createdUserRole = await userRoleService.CreateUserRoleAsync(userRole);
+    return Results.Created($"/api/userroles/{createdUserRole.UserRoleId}", createdUserRole);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapPut("/api/userroles/{id:int}", async (int id, TempleApi.Domain.Entities.UserRole userRole, IUserRoleService userRoleService) =>
+{
+    if (id != userRole.UserRoleId)
+    {
+        return Results.BadRequest();
+    }
+
+    var updatedUserRole = await userRoleService.UpdateUserRoleAsync(userRole);
+    return Results.Ok(updatedUserRole);
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapDelete("/api/userroles/{id:int}", async (int id, IUserRoleService userRoleService) =>
+{
+    var success = await userRoleService.DeleteUserRoleAsync(id);
+    if (!success)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.NoContent();
+}).RequireAuthorization("UserRoleConfiguration");
 
 // Temple endpoints
 app.MapGet("/api/temples", async (ITempleService templeService) =>
@@ -432,8 +748,12 @@ app.MapPost("/api/devotees", async (CreateDevoteeDto createDto, IDevoteeService 
 {
     try
     {
-        var devotee = await devoteeService.CreateDevoteeAsync(createDto);
-        return Results.Created($"/api/devotees/{devotee.Id}", devotee);
+        var (devotee, generatedPassword) = await devoteeService.CreateDevoteeWithUserAsync(createDto);
+        if (devotee == null)
+        {
+            return Results.Problem("Failed to create devotee");
+        }
+        return Results.Created($"/api/devotees/{devotee.Id}", new { devotee, generatedPassword });
     }
     catch (Exception ex)
     {
@@ -627,6 +947,112 @@ app.MapGet("/api/events", async (IEventService eventService) =>
     }
 });
 
+// Area endpoints
+app.MapGet("/api/areas", async (int? templeId, IAreaService areaService) =>
+{
+    try
+    {
+        if (templeId.HasValue)
+        {
+            var filtered = await areaService.GetAreasByTempleAsync(templeId.Value);
+            return Results.Ok(filtered);
+        }
+        var areas = await areaService.GetAllAreasAsync();
+        return Results.Ok(areas);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting all areas");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/areas/{id}", async (int id, IAreaService areaService) =>
+{
+    try
+    {
+        var area = await areaService.GetAreaByIdAsync(id);
+        if (area == null)
+            return Results.NotFound();
+        return Results.Ok(area);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting area with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapGet("/api/temples/{templeId}/areas", async (int templeId, IAreaService areaService) =>
+{
+    try
+    {
+        var areas = await areaService.GetAreasByTempleAsync(templeId);
+        return Results.Ok(areas);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting areas for temple {TempleId}", templeId);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPost("/api/areas", async (CreateAreaDto createDto, IAreaService areaService) =>
+{
+    try
+    {
+        var area = await areaService.CreateAreaAsync(createDto);
+        return Results.Created($"/api/areas/{area.Id}", area);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error creating area");
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapPut("/api/areas/{id}", async (int id, CreateAreaDto updateDto, IAreaService areaService) =>
+{
+    try
+    {
+        var area = await areaService.UpdateAreaAsync(id, updateDto);
+        if (area == null)
+            return Results.NotFound();
+        
+        return Results.Ok(area);
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.BadRequest(ex.Message);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error updating area with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+// (Removed duplicate category toggle-status and delete routes to avoid conflicts)
+
+// Event Type endpoints
+app.MapGet("/api/event-types", async (IEventTypeService eventTypeService) =>
+{
+    try
+    {
+        var types = await eventTypeService.GetAllAsync();
+        return Results.Ok(types);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error getting event types");
+        return Results.Problem("Internal server error");
+    }
+});
+
 app.MapGet("/api/events/{id}", async (int id, IEventService eventService) =>
 {
     try
@@ -737,6 +1163,135 @@ app.MapDelete("/api/events/{id}", async (int id, IEventService eventService) =>
     }
 });
 
+// Legacy Expense-items endpoints removed; use /api/expense-items instead
+
+// Expense Item alias endpoints
+app.MapGet("/api/expense-items", async (IEventExpenseService svc) =>
+{
+    var items = await svc.GetAllEventExpensesAsync();
+    return Results.Ok(items);
+});
+
+app.MapPost("/api/expense-items", async (CreateEventExpenseDto dto, IEventExpenseService svc) =>
+{
+    var item = await svc.CreateEventExpenseAsync(dto);
+    return Results.Created($"/api/expense-items/{item.Id}", item);
+});
+
+app.MapPut("/api/expense-items/{id}", async (int id, UpdateEventExpenseDto dto, IEventExpenseService svc) =>
+{
+    var item = await svc.UpdateEventExpenseAsync(id, dto);
+    return Results.Ok(item);
+});
+
+app.MapDelete("/api/expense-items/{id}", async (int id, IEventExpenseService svc) =>
+{
+    var ok = await svc.DeleteEventExpenseAsync(id);
+    return ok ? Results.NoContent() : Results.NotFound();
+});
+
+// Expense Services endpoints
+app.MapGet("/api/expense-services", async (IExpenseServiceService svc) =>
+{
+    var list = await svc.GetAllExpenseServicesAsync();
+    return Results.Ok(list);
+});
+
+app.MapPost("/api/expense-services", async (CreateExpenseServiceDto dto, IExpenseServiceService svc) =>
+{
+    var created = await svc.CreateExpenseServiceAsync(dto);
+    return Results.Created($"/api/expense-services/{created.Id}", created);
+});
+
+app.MapPut("/api/expense-services/{id}", async (int id, UpdateExpenseServiceDto dto, IExpenseServiceService svc) =>
+{
+    var updated = await svc.UpdateExpenseServiceAsync(id, dto);
+    return Results.Ok(updated);
+});
+
+app.MapDelete("/api/expense-services/{id}", async (int id, IExpenseServiceService svc) =>
+{
+    var ok = await svc.DeleteExpenseServiceAsync(id);
+    return ok ? Results.NoContent() : Results.NotFound();
+});
+
+// Event Expense endpoints (renamed from Expenses)
+app.MapGet("/api/event-expenses", async (IExpenseService svc) =>
+{
+    var expenses = await svc.GetAllExpensesAsync();
+    return Results.Ok(expenses);
+});
+
+app.MapGet("/api/event-expenses/{id}", async (int id, IExpenseService svc) =>
+{
+    var p = await svc.GetExpenseByIdAsync(id);
+    if (p is null) return Results.NotFound();
+    return Results.Ok(p);
+});
+
+app.MapPost("/api/event-expenses", async (CreateExpenseDto dto, IExpenseService svc) =>
+{
+    var created = await svc.CreateExpenseAsync(dto);
+    return Results.Created($"/api/event-expenses/{created.Id}", created);
+});
+
+app.MapPut("/api/event-expenses/{id}", async (int id, UpdateExpenseDto dto, IExpenseService svc) =>
+{
+    var updated = await svc.UpdateExpenseAsync(id, dto);
+    return Results.Ok(updated);
+});
+
+app.MapPut("/api/event-expenses/{id}/approve", async (int id, IExpenseService svc) =>
+{
+    try
+    {
+        // For now, using a default user ID of 1. In a real app, this would come from authentication
+        var approved = await svc.ApproveExpenseAsync(id, 1);
+        return Results.Ok(approved);
+    }
+    catch (ArgumentException ex)
+    {
+        return Results.NotFound(new { message = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error approving expense with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+});
+
+app.MapDelete("/api/event-expenses/{id}", async (int id, IExpenseService svc) =>
+{
+    var ok = await svc.DeleteExpenseAsync(id);
+    return ok ? Results.NoContent() : Results.NotFound();
+});
+
+// Alias for vouchers by event expense
+app.MapGet("/api/event-expenses/{eventExpenseId}/vouchers", async (int eventExpenseId, IVoucherService svc) =>
+{
+    var vouchers = await svc.GetVouchersByExpenseAsync(eventExpenseId);
+    return Results.Ok(vouchers);
+});
+
+// Event Expense alias endpoints removed; use /api/event-expenses
+
+// Voucher endpoints
+app.MapGet("/api/vouchers", async (IVoucherService svc) =>
+{
+    var vouchers = await svc.GetAllVouchersAsync();
+    return Results.Ok(vouchers);
+});
+
+app.MapGet("/api/events/{eventId}/vouchers", async (int eventId, IVoucherService svc) =>
+{
+    var vouchers = await svc.GetVouchersByEventAsync(eventId);
+    return Results.Ok(vouchers);
+});
+
+
+// Voucher approval is handled through expense approval endpoints
+// Use PUT /api/event-expenses/{id}/approve instead
+
 app.MapGet("/api/events/search/{searchTerm}", async (string searchTerm, IEventService eventService) =>
 {
     try
@@ -756,23 +1311,23 @@ app.MapGet("/api/events/search/{searchTerm}", async (string searchTerm, IEventSe
 
 app.MapGet("/api/permissions", async (TempleDbContext db) =>
 {
-    var permissions = await db.Permissions
-        .Select(p => new { p.PermissionId, p.PermissionName, p.Description })
+    var pagePermissions = await db.PagePermissions
+        .Select(p => new { p.PagePermissionId, p.PageName, p.PageUrl, p.PermissionId })
         .ToListAsync();
-    return Results.Ok(permissions);
-}).RequireAuthorization("UserRoleConfiguration");
+    return Results.Ok(pagePermissions);
+}).RequireAuthorization("AdminOnly");
 
 app.MapGet("/api/roles/{roleId}/permissions", async (int roleId, TempleDbContext db) =>
 {
     var role = await db.Roles.FindAsync(roleId);
     if (role == null) return Results.NotFound();
 
-    var permissionIds = await db.RolePermissions
+    var pagePermissionIds = await db.RolePermissions
         .Where(rp => rp.RoleId == roleId)
-        .Select(rp => rp.PermissionId)
+        .Select(rp => rp.PagePermissionId)
         .ToListAsync();
 
-    return Results.Ok(new { roleId, permissionIds });
+    return Results.Ok(new { roleId, pagePermissionIds });
 }).RequireAuthorization("UserRoleConfiguration");
 
 app.MapPost("/api/roles/{roleId}/permissions", async (int roleId, UpdateRolePermissionsDto request, TempleDbContext db) =>
@@ -783,9 +1338,9 @@ app.MapPost("/api/roles/{roleId}/permissions", async (int roleId, UpdateRolePerm
     if (string.Equals(role.RoleName, "Admin", StringComparison.OrdinalIgnoreCase))
         return Results.BadRequest("Admin role permissions cannot be modified.");
 
-    var validPermissionIds = await db.Permissions
-        .Where(p => request.PermissionIds.Contains(p.PermissionId))
-        .Select(p => p.PermissionId)
+    var validPagePermissionIds = await db.PagePermissions
+        .Where(p => request.PagePermissionIds.Contains(p.PagePermissionId))
+        .Select(p => p.PagePermissionId)
         .ToListAsync();
 
     using var tx = await db.Database.BeginTransactionAsync();
@@ -795,10 +1350,10 @@ app.MapPost("/api/roles/{roleId}/permissions", async (int roleId, UpdateRolePerm
         db.RolePermissions.RemoveRange(existing);
         await db.SaveChangesAsync();
 
-        var newMappings = validPermissionIds.Select(pid => new RolePermission
+        var newMappings = validPagePermissionIds.Select(pid => new RolePermission
         {
             RoleId = roleId,
-            PermissionId = pid,
+            PagePermissionId = pid,
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         });
@@ -865,6 +1420,13 @@ app.MapGet("/api/users/email/{email}", async (string email, IUserService userSer
     }
 }).RequireAuthorization("UserRoleConfiguration");
 
+// Minimal endpoint: get roles and permissions for a userId
+app.MapGet("/api/users/{userId:int}/roles-permissions", async (int userId, IAuthService authService) =>
+{
+    var (roles, permissions) = await authService.GetUserRolesAndPermissionsAsync(userId);
+    return Results.Ok(new { userId, roles, permissions });
+}).RequireAuthorization("UserRoleConfiguration");
+
 app.MapGet("/api/users/role/{role}", async (TempleApi.Enums.UserRole role, IUserService userService) =>
 {
     try
@@ -924,6 +1486,24 @@ app.MapDelete("/api/users/{id}", async (int id, IUserService userService) =>
     catch (Exception ex)
     {
         Log.Error(ex, "Error deleting user with id {Id}", id);
+        return Results.Problem("Internal server error");
+    }
+}).RequireAuthorization("UserRoleConfiguration");
+
+app.MapPost("/api/users/{id:int}/reset-password", async (int id, IUserService userService) =>
+{
+    try
+    {
+        var newPassword = await userService.ResetPasswordAsync(id);
+        return Results.Ok(new { newPassword });
+    }
+    catch (KeyNotFoundException)
+    {
+        return Results.NotFound();
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error resetting password for user {Id}", id);
         return Results.Problem("Internal server error");
     }
 }).RequireAuthorization("UserRoleConfiguration");
@@ -1654,6 +2234,124 @@ app.MapPost("/api/horoscope/monthly", async (HoroscopeRequestDto request, IJyoti
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));
 
+// Debug endpoint to verify seeding
+app.MapGet("/api/debug/seeding-status", async (TempleDbContext context) =>
+{
+    var pagePermissionsCount = await context.PagePermissions.CountAsync();
+    var uniquePages = await context.PagePermissions.Select(p => p.PageName).Distinct().CountAsync();
+    var samplePages = await context.PagePermissions
+        .Select(p => new { p.PageName, p.PageUrl })
+        .Distinct()
+        .Take(15)
+        .ToListAsync();
+    
+    var rolesCount = await context.Roles.CountAsync();
+    var roles = await context.Roles.Select(r => r.RoleName).ToListAsync();
+    
+    var usersCount = await context.Users.CountAsync();
+    var adminExists = await context.Users.AnyAsync(u => u.Username == "admin");
+    
+    var templesCount = await context.Temples.CountAsync();
+    
+    return Results.Ok(new {
+        PagePermissions = new {
+            Total = pagePermissionsCount,
+            UniquePages = uniquePages,
+            SamplePages = samplePages
+        },
+        Roles = new {
+            Total = rolesCount,
+            Names = roles
+        },
+        Users = new {
+            Total = usersCount,
+            AdminExists = adminExists
+        },
+        Temples = new {
+            Total = templesCount
+        },
+        Status = "✅ Seeding verification completed successfully!"
+    });
+});
+
+// Debug endpoint: inspect admin user record (development use only)
+app.MapGet("/api/debug/admin", async (TempleDbContext context) =>
+{
+    var admin = await context.Users
+        .Include(u => u.UserRoles)
+        .ThenInclude(ur => ur.Role)
+        .FirstOrDefaultAsync(u => u.Username == "admin");
+
+    if (admin == null)
+    {
+        return Results.NotFound(new { message = "Admin user not found" });
+    }
+
+    return Results.Ok(new
+    {
+        admin.UserId,
+        admin.Username,
+        admin.Email,
+        admin.IsActive,
+        admin.IsVerified,
+        PasswordDecoded = SafeDecode(admin.PasswordHash),
+        Roles = admin.UserRoles.Select(ur => ur.Role.RoleName).ToList()
+    });
+
+    static string SafeDecode(string base64)
+    {
+        try
+        {
+            return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+        }
+        catch
+        {
+            return "<invalid base64>";
+        }
+    }
+});
+
+// Role permissions endpoint for UI permission checking
+app.MapGet("/api/admin/role-permissions", async (TempleDbContext context, IAuthService authService, HttpContext httpContext) =>
+{
+    try 
+    {
+        // Get current user from JWT token
+        var userId = authService.GetUserIdFromToken(httpContext);
+        if (userId == null)
+        {
+            return Results.Unauthorized();
+        }
+
+        // Get user's roles and permissions
+        var (userRoles, userPermissions) = await authService.GetUserRolesAndPermissionsAsync(userId.Value);
+        
+        // Get all role permissions with page details for user's roles
+        var rolePermissions = await context.RolePermissions
+            .Include(rp => rp.Role)
+            .Include(rp => rp.PagePermission)
+            .Where(rp => userRoles.Contains(rp.Role.RoleName))
+            .Select(rp => new {
+                RoleName = rp.Role.RoleName,
+                PageName = rp.PagePermission.PageName,
+                PageUrl = rp.PagePermission.PageUrl,
+                PermissionName = ((TempleApi.Enums.Permission)rp.PagePermission.PermissionId).ToString(),
+                PermissionId = rp.PagePermission.PermissionId
+            })
+            .ToListAsync();
+
+        Log.Information("Retrieved {Count} role permissions for user {UserId} with roles {Roles}", 
+            rolePermissions.Count, userId, string.Join(",", userRoles));
+            
+        return Results.Ok(rolePermissions);
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error retrieving role permissions");
+        return Results.Problem("Failed to retrieve role permissions");
+    }
+}).RequireAuthorization();
+
 // Database info endpoint
 app.MapGet("/api/database/info", (IOptions<DatabaseSettings> dbSettings) =>
 {
@@ -1677,4 +2375,85 @@ app.MapGet("/api/config/pages", (IConfiguration config) =>
     return Results.Ok(pages);
 }).RequireAuthorization("UserRoleConfiguration");
 
+app.MapGet("/api/users/me", async (HttpContext httpContext, IAuthService authService) =>
+{
+    var userId = authService.GetUserIdFromToken(httpContext);
+    if (userId == null)
+    {
+        // Try Basic auth user from /api/auth/me behavior
+        var resp = await authService.LoginAsync(new LoginRequest { Username = httpContext.User.Identity?.Name ?? string.Empty, Password = string.Empty });
+        if (resp.User == null) return Results.Unauthorized();
+        return Results.Ok(resp.User);
+    }
+
+    var userDto = await authService.GetUserByIdAsync(userId.Value);
+    return userDto != null ? Results.Ok(userDto) : Results.NotFound();
+}).RequireAuthorization();
+
+app.MapPut("/api/users/me", async (HttpContext httpContext, CreateUserDto updateDto, TempleApi.Data.TempleDbContext db, IAuthService authService) =>
+{
+    // Identify user via Basic auth context
+    var identityName = httpContext.User.Identity?.Name;
+    if (string.IsNullOrWhiteSpace(identityName)) return Results.Unauthorized();
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Username == identityName || u.Email == identityName);
+    if (user == null) return Results.NotFound();
+
+    // Update selected profile fields
+    user.Email = updateDto.Email;
+    user.FullName = updateDto.Name;
+    user.Gender = updateDto.Gender;
+    user.PhoneNumber = updateDto.PhoneNumber;
+    user.Address = updateDto.Address;
+    user.Nakshatra = updateDto.Nakshatra;
+    user.DateOfBirth = updateDto.DateOfBirth;
+
+    // Optional: if password provided, update
+    if (!string.IsNullOrWhiteSpace(updateDto.Password))
+    {
+        user.PasswordHash = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(updateDto.Password));
+    }
+
+    await db.SaveChangesAsync();
+
+    var roles = await authService.GetUserRolesAsync(user.UserId);
+    var result = new UserDto
+    {
+        UserId = user.UserId,
+        Username = user.Username,
+        Email = user.Email,
+        FullName = user.FullName,
+        Gender = user.Gender,
+        PhoneNumber = user.PhoneNumber,
+        Address = user.Address,
+        IsActive = user.IsActive,
+        CreatedAt = user.CreatedAt,
+        Nakshatra = user.Nakshatra,
+        DateOfBirth = user.DateOfBirth,
+        Roles = roles
+    };
+
+    return Results.Ok(result);
+}).RequireAuthorization();
+
+// TEMPORARY: Send email for testing SMTP configuration
+app.MapPost("/api/debug/send-email", async (EmailSendRequest req, IConfiguration config, ILogger<Program> logger) =>
+{
+    try
+    {
+        var emailSvc = new EmailService(config, logger);
+        await emailSvc.SendAsync(req.To, req.Subject, req.Body);
+        return Results.Ok(new { message = $"Email sent to {req.To}" });
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to send test email to {To}", req.To);
+        return Results.Problem($"Failed to send email: {ex.Message}");
+    }
+});
+
 app.Run();
+
+public partial class Program { }
+
+public record EmailSendRequest(string To, string Subject, string Body);

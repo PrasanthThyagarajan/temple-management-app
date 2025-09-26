@@ -29,7 +29,7 @@ namespace TempleApi.Services
 			};
 			using var msg = new MailMessage(from, toEmail, subject, body)
 			{
-				IsBodyHtml = false
+				IsBodyHtml = true
 			};
 			await client.SendMailAsync(msg);
 		}

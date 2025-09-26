@@ -222,7 +222,7 @@ namespace TempleApi.Tests
                     {
                         Id = 1,
                         ProductId = 1,
-                Quantity = 2,
+                        Quantity = 2,
                         UnitPrice = 10.00m,
                         Subtotal = 20.00m,
                         Product = new Product { Id = 1, Name = "Test Product" }
@@ -237,10 +237,10 @@ namespace TempleApi.Tests
 
             // Assert
             result.Should().NotBeNull();
-            result.Id.Should().Be(1);
-            result.CustomerName.Should().Be("Customer");
-            result.StaffName.Should().Be("Staff");
-            result.SaleItems.Should().HaveCount(1);
+            result!.Id.Should().Be(1);
+            result!.CustomerName.Should().Be("Customer");
+            result!.StaffName.Should().Be("Staff");
+            result!.SaleItems.Should().HaveCount(1);
         }
 
         [Fact]
@@ -576,7 +576,7 @@ namespace TempleApi.Tests
                     Id = 1,
                     SaleId = 1,
                     ProductId = 1,
-                Quantity = 2,
+                    Quantity = 2,
                     UnitPrice = 10.00m,
                     Subtotal = 20.00m
                 }

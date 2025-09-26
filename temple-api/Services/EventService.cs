@@ -18,16 +18,18 @@ namespace TempleApi.Services
         public async Task<IEnumerable<Event>> GetAllEventsAsync()
         {
             return await _context.Events
-                .Include(e => e.Temple)
+                .Include(e => e.Area)
+                .Include(e => e.EventType)
                 .Where(e => e.IsActive)
-                .OrderBy(e => e.StartDate)
+                .OrderByDescending(e => e.Id)
                 .ToListAsync();
         }
 
         public async Task<Event?> GetEventByIdAsync(int id)
         {
             return await _context.Events
-                .Include(e => e.Temple)
+                .Include(e => e.Area)
+                .Include(e => e.EventType)
                 .Include(e => e.Registrations.Where(r => r.Status == "Confirmed"))
                 .FirstOrDefaultAsync(e => e.Id == id && e.IsActive);
         }
@@ -35,8 +37,8 @@ namespace TempleApi.Services
         public async Task<IEnumerable<Event>> GetEventsByTempleAsync(int templeId)
         {
             return await _context.Events
-                .Where(e => e.TempleId == templeId && e.IsActive)
-                .OrderBy(e => e.StartDate)
+                .Where(e => e.Area != null && e.Area.TempleId == templeId && e.IsActive)
+                .OrderByDescending(e => e.Id)
                 .ToListAsync();
         }
 
@@ -44,11 +46,11 @@ namespace TempleApi.Services
         {
             var currentDate = DateTime.UtcNow;
             return await _context.Events
-                .Where(e => e.TempleId == templeId && 
+                .Where(e => e.Area != null && e.Area.TempleId == templeId && 
                            e.IsActive && 
                            e.StartDate >= currentDate &&
                            e.Status == "Scheduled")
-                .OrderBy(e => e.StartDate)
+                .OrderByDescending(e => e.Id)
                 .ToListAsync();
         }
 
@@ -56,18 +58,19 @@ namespace TempleApi.Services
         {
             var eventEntity = new Event
             {
-                TempleId = createDto.TempleId,
+                AreaId = createDto.AreaId,
                 Name = createDto.Name,
                 Description = createDto.Description ?? string.Empty,
                 StartDate = createDto.StartDate,
                 EndDate = createDto.EndDate,
                 Location = createDto.Location ?? string.Empty,
-                EventType = createDto.EventType,
+                EventTypeId = createDto.EventTypeId,
                 MaxAttendees = createDto.MaxAttendees,
                 EntryFee = createDto.RegistrationFee,
-                Status = "Scheduled",
+                Status = string.IsNullOrWhiteSpace(createDto.Status) ? string.Empty : createDto.Status,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                IsApprovalNeeded = createDto.IsApprovalNeeded
             };
 
             _context.Events.Add(eventEntity);
@@ -86,11 +89,14 @@ namespace TempleApi.Services
             eventEntity.Description = updateDto.Description ?? string.Empty;
             eventEntity.StartDate = updateDto.StartDate;
             eventEntity.EndDate = updateDto.EndDate;
+            eventEntity.AreaId = updateDto.AreaId;
             eventEntity.Location = updateDto.Location ?? string.Empty;
-            eventEntity.EventType = updateDto.EventType;
+            eventEntity.EventTypeId = updateDto.EventTypeId;
             eventEntity.MaxAttendees = updateDto.MaxAttendees;
             eventEntity.EntryFee = updateDto.RegistrationFee;
+            eventEntity.Status = updateDto.Status;
             eventEntity.UpdatedAt = DateTime.UtcNow;
+            eventEntity.IsApprovalNeeded = updateDto.IsApprovalNeeded;
 
             await _context.SaveChangesAsync();
             return eventEntity;
@@ -129,14 +135,14 @@ namespace TempleApi.Services
 
             var normalizedSearchTerm = searchTerm.ToLower();
             return await _context.Events
-                .Include(e => e.Temple)
+                .Include(e => e.Area)
                 .Where(e => e.IsActive && (
                     e.Name.ToLower().Contains(normalizedSearchTerm) ||
                     e.Description.ToLower().Contains(normalizedSearchTerm) ||
-                    e.EventType.ToLower().Contains(normalizedSearchTerm) ||
+                    e.EventType.Name.ToLower().Contains(normalizedSearchTerm) ||
                     e.Location.ToLower().Contains(normalizedSearchTerm)
                 ))
-                .OrderBy(e => e.StartDate)
+                .OrderByDescending(e => e.Id)
                 .ToListAsync();
         }
     }

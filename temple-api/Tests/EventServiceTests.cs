@@ -32,12 +32,18 @@ namespace TempleApi.Tests
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 
+			var area = new Area { TempleId = temple.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "Festival", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
 			var dto = new CreateEventDto
 			{
-				TempleId = temple.Id,
+				AreaId = area.Id,
+				EventTypeId = type.Id,
 				Name = "Event",
 				Description = "Desc",
-				EventType = "Festival",
 				StartDate = DateTime.UtcNow.AddDays(1),
 				EndDate = DateTime.UtcNow.AddDays(2),
 				Location = "Hall",
@@ -48,9 +54,9 @@ namespace TempleApi.Tests
 			var result = await _eventService.CreateEventAsync(dto);
 
 			result.Should().NotBeNull();
-			result.TempleId.Should().Be(temple.Id);
+			result.AreaId.Should().Be(area.Id);
+			result.EventTypeId.Should().Be(type.Id);
 			result.Name.Should().Be("Event");
-			result.EventType.Should().Be("Festival");
 			result.MaxAttendees.Should().Be(100);
 			result.EntryFee.Should().Be(50);
 		}
@@ -65,7 +71,14 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var ev = new Event { TempleId = t.Id, Name = "E", Description = "D", EventType = "Festival", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), IsActive = true };
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "Festival", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
+			var ev = new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "E", Description = "D", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), IsActive = true };
 			_context.Events.Add(ev);
 			await _context.SaveChangesAsync();
 
@@ -80,9 +93,16 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "Festival", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
 			_context.Events.AddRange(
-				new Event { TempleId = t.Id, Name = "E1", EventType = "Festival", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true },
-				new Event { TempleId = t.Id, Name = "E2", EventType = "Festival", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = false }
+				new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "E1", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true },
+				new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "E2", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = false }
 			);
 			await _context.SaveChangesAsync();
 
@@ -97,9 +117,17 @@ namespace TempleApi.Tests
 			var t2 = new Temple { Name = "T2", Address = "A2", City = "C2", State = "S2", IsActive = true };
 			_context.Temples.AddRange(t1, t2);
 			await _context.SaveChangesAsync();
+
+			var a1 = new Area { TempleId = t1.Id, Name = "A1", IsActive = true };
+			var a2 = new Area { TempleId = t2.Id, Name = "A2", IsActive = true };
+			var type = new EventType { Name = "Festival", IsActive = true };
+			_context.Areas.AddRange(a1, a2);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
 			_context.Events.AddRange(
-				new Event { TempleId = t1.Id, Name = "E1", EventType = "Festival", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true },
-				new Event { TempleId = t2.Id, Name = "E2", EventType = "Festival", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true }
+				new Event { AreaId = a1.Id, EventTypeId = type.Id, Name = "E1", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true },
+				new Event { AreaId = a2.Id, EventTypeId = type.Id, Name = "E2", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true }
 			);
 			await _context.SaveChangesAsync();
 
@@ -113,9 +141,16 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "Festival", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
 			_context.Events.AddRange(
-				new Event { TempleId = t.Id, Name = "Past", EventType = "F", StartDate = DateTime.UtcNow.AddDays(-1), EndDate = DateTime.UtcNow, Status = "Scheduled", IsActive = true },
-				new Event { TempleId = t.Id, Name = "Future", EventType = "F", StartDate = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(2), Status = "Scheduled", IsActive = true }
+				new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "Past", StartDate = DateTime.UtcNow.AddDays(-1), EndDate = DateTime.UtcNow, Status = "Scheduled", IsActive = true },
+				new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "Future", StartDate = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(2), Status = "Scheduled", IsActive = true }
 			);
 			await _context.SaveChangesAsync();
 
@@ -133,11 +168,19 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var ev = new Event { TempleId = t.Id, Name = "E", Description = "D", EventType = "F", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), IsActive = true };
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type1 = new EventType { Name = "F", IsActive = true };
+			var type2 = new EventType { Name = "Pooja", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.AddRange(type1, type2);
+			await _context.SaveChangesAsync();
+
+			var ev = new Event { AreaId = area.Id, EventTypeId = type1.Id, Name = "E", Description = "D", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow.AddHours(1), IsActive = true };
 			_context.Events.Add(ev);
 			await _context.SaveChangesAsync();
 
-			var dto = new CreateEventDto { TempleId = t.Id, Name = "E2", Description = "D2", EventType = "Pooja", StartDate = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(2), Location = "L", MaxAttendees = 10, RegistrationFee = 5 };
+			var dto = new CreateEventDto { AreaId = area.Id, EventTypeId = type2.Id, Name = "E2", Description = "D2", StartDate = DateTime.UtcNow.AddDays(1), EndDate = DateTime.UtcNow.AddDays(2), Location = "L", MaxAttendees = 10, RegistrationFee = 5 };
 			var result = await _eventService.UpdateEventAsync(ev.Id, dto);
 
 			result.Should().NotBeNull();
@@ -149,7 +192,11 @@ namespace TempleApi.Tests
 		[Fact]
 		public async Task UpdateEventAsync_ShouldReturnNull_WhenNotFound()
 		{
-			var dto = new CreateEventDto { TempleId = 1, Name = "E", EventType = "F", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow };
+			var type = new EventType { Name = "F", IsActive = true };
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
+			var dto = new CreateEventDto { EventTypeId = type.Id, Name = "E", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow };
 			var result = await _eventService.UpdateEventAsync(999, dto);
 			result.Should().BeNull();
 		}
@@ -160,7 +207,14 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var ev = new Event { TempleId = t.Id, Name = "E", EventType = "F", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, Status = "Scheduled", IsActive = true };
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "F", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
+			var ev = new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "E", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, Status = "Scheduled", IsActive = true };
 			_context.Events.Add(ev);
 			await _context.SaveChangesAsync();
 
@@ -176,7 +230,14 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var ev = new Event { TempleId = t.Id, Name = "E", EventType = "F", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true };
+
+			var area = new Area { TempleId = t.Id, Name = "Main Hall", IsActive = true };
+			var type = new EventType { Name = "F", IsActive = true };
+			_context.Areas.Add(area);
+			_context.EventTypes.Add(type);
+			await _context.SaveChangesAsync();
+
+			var ev = new Event { AreaId = area.Id, EventTypeId = type.Id, Name = "E", StartDate = DateTime.UtcNow, EndDate = DateTime.UtcNow, IsActive = true };
 			_context.Events.Add(ev);
 			await _context.SaveChangesAsync();
 

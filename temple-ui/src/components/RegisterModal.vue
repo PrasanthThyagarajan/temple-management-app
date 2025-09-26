@@ -20,6 +20,17 @@
           prefix-icon="User"
         />
       </el-form-item>
+
+      <el-form-item label="Gender" prop="gender">
+        <el-select
+          v-model="registerForm.gender"
+          placeholder="Select your gender"
+        >
+          <el-option label="Male" value="Male" />
+          <el-option label="Female" value="Female" />
+          <el-option label="Other" value="Other" />
+        </el-select>
+      </el-form-item>
       
       <el-form-item label="Email" prop="email">
         <el-input
@@ -47,6 +58,31 @@
           placeholder="Confirm your password"
           prefix-icon="Lock"
           show-password
+        />
+      </el-form-item>
+      
+      <el-form-item label="Nakshatra" prop="nakshatra">
+        <el-select
+          v-model="registerForm.nakshatra"
+          placeholder="Select your Nakshatra"
+          clearable
+        >
+          <el-option
+            v-for="nakshatra in nakshatras"
+            :key="nakshatra"
+            :label="nakshatra"
+            :value="nakshatra"
+          />
+        </el-select>
+      </el-form-item>
+      
+      <el-form-item label="Date of Birth" prop="dateOfBirth">
+        <el-date-picker
+          v-model="registerForm.dateOfBirth"
+          type="datetime"
+          placeholder="Select date and time"
+          format="YYYY-MM-DD HH:mm:ss"
+          value-format="YYYY-MM-DDTHH:mm:ss"
         />
       </el-form-item>
     </el-form>
@@ -81,11 +117,23 @@ const visible = ref(props.modelValue)
 const loading = ref(false)
 const registerFormRef = ref()
 
+// List of Nakshatras
+const nakshatras = [
+'Aswathy','Bharani','Karthika','Rohini','Makayiram','Thiruvathira',
+'Punartham','Pooyam','Ayilyam','Makam','Pooram','Uthram',
+'Atham','Chithira','Chothi','Visakham','Anizham','Thrikketta',
+'Moolam','Pooradam','Uthradam','Thiruvonam','Avittam','Chathayam',
+'Pooruruttathi','Uthirattathi','Revathi'
+]
+
 const registerForm = reactive({
   name: '',
+  gender: '',
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  nakshatra: '',
+  dateOfBirth: null
 })
 
 const validateConfirmPassword = (rule, value, callback) => {
@@ -100,6 +148,9 @@ const registerRules = {
   name: [
     { required: true, message: 'Please enter your full name', trigger: 'blur' }
   ],
+  gender: [
+    { required: true, message: 'Please select your gender', trigger: 'change' }
+  ],
   email: [
     { required: true, message: 'Please enter email', trigger: 'blur' },
     { type: 'email', message: 'Please enter a valid email', trigger: 'blur' }
@@ -111,7 +162,9 @@ const registerRules = {
   confirmPassword: [
     { required: true, message: 'Please confirm password', trigger: 'blur' },
     { validator: validateConfirmPassword, trigger: 'blur' }
-  ]
+  ],
+  nakshatra: [],
+  dateOfBirth: []
 }
 
 const handleClose = () => {
@@ -133,10 +186,10 @@ const handleRegister = async () => {
     await registerFormRef.value.validate()
     loading.value = true
     
-    const result = await register(registerForm.name, registerForm.email, registerForm.password)
+    const result = await register(registerForm.name, registerForm.email, registerForm.password, registerForm.nakshatra, registerForm.dateOfBirth, registerForm.gender)
     
     if (result.success) {
-      ElMessage.success('Registration successful! Please login.')
+      ElMessage.success(result.message || 'Registration successful! Please check your email to verify your account.')
       emit('register-success')
       handleClose()
     } else {

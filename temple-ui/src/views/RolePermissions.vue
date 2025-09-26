@@ -1,123 +1,295 @@
 <template>
-  <div class="page-container">
-    <h2>User Role Permissions</h2>
-
-    <div v-if="loading" class="status">Loading...</div>
-    <div v-else>
-      <div class="toolbar">
-        <label>
-          Role:
-          <select v-model.number="selectedRoleId" @change="loadRolePermissions">
-            <option v-for="r in roles" :key="r.roleId" :value="r.roleId">{{ r.roleName }}</option>
-          </select>
-        </label>
-        <button :disabled="saving" @click="save">{{ saving ? 'Saving...' : 'Save Changes' }}</button>
-        <span class="status" v-if="message">{{ message }}</span>
-      </div>
-
-      <div class="grid">
-        <div class="col">
-          <h3>Permissions</h3>
-          <div class="perm-list">
-            <label v-for="p in permissions" :key="p.permissionId" class="perm-item">
-              <input type="checkbox" :value="p.permissionId" v-model="selectedPermissionIds" />
-              <span class="perm-name">{{ p.permissionName }}</span>
-              <span class="perm-desc" v-if="p.description">- {{ p.description }}</span>
-            </label>
-          </div>
+  <div class="role-permissions-container">
+    <el-card class="role-permissions-card">
+      <template #header>
+        <div class="card-header">
+          <h2>System Permissions</h2>
+          <p style="color: #909399; font-size: 14px; margin: 5px 0 0 0;">View all available system permissions (Admin Only)</p>
         </div>
+      </template>
+
+      <!-- Search and Filters -->
+      <div class="search-filters">
+        <div class="devotional-banner permissions-banner"></div>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="8" :lg="8" :xl="8">
+            <el-input
+              v-model="searchTerm"
+              placeholder="Search permissions..."
+              clearable
+              @input="handleSearch"
+            >
+              <template #prefix>
+                <el-icon><Search /></el-icon>
+              </template>
+            </el-input>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-button type="info" @click="fetchPermissions" title="Refresh data">
+              <el-icon><Refresh /></el-icon>
+              Refresh
+            </el-button>
+          </el-col>
+        </el-row>
       </div>
-    </div>
+
+      <!-- Summary Cards -->
+      <div class="summary-cards" v-if="!loading">
+        <el-row :gutter="20">
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+            <el-card class="summary-card">
+              <div class="summary-content">
+                <div class="summary-icon total">
+                  <el-icon><Key /></el-icon>
+                </div>
+                <div class="summary-text">
+                  <div class="summary-value">{{ permissions.length }}</div>
+                  <div class="summary-label">Total Permissions</div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
+            <el-card class="summary-card">
+              <div class="summary-content">
+                <div class="summary-icon active">
+                  <el-icon><Filter /></el-icon>
+                </div>
+                <div class="summary-text">
+                  <div class="summary-value">{{ filteredPermissions.length }}</div>
+                  <div class="summary-label">Filtered Results</div>
+                </div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+      </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-container">
+        <el-skeleton :rows="5" animated />
+      </div>
+
+      <!-- Permissions Table -->
+      <div v-else class="table-container">
+        <el-table 
+          :data="filteredPermissions" 
+          stripe 
+          style="width: 100%"
+        >
+          <el-table-column prop="permissionId" label="ID" width="80" sortable />
+          <el-table-column prop="permissionName" label="Permission Name" min-width="250" sortable>
+            <template #default="scope">
+              <strong>{{ scope.row.permissionName }}</strong>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="Description" min-width="400">
+            <template #default="scope">
+              <span v-if="scope.row.description">{{ scope.row.description }}</span>
+              <span v-else class="text-muted">No description</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="System Permission" width="150" align="center">
+            <template #default="scope">
+              <el-tag type="primary" size="small">
+                Active
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script>
 import axios from 'axios'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '@/stores/auth'
+import { Key, Filter, Search, Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 
 export default {
   name: 'RolePermissions',
+  components: { Key, Filter, Search, Refresh },
   setup() {
     const { hasRole } = useAuth()
-    const roles = ref([])
     const permissions = ref([])
-    const selectedRoleId = ref(null)
-    const selectedPermissionIds = ref([])
-    const loading = ref(true)
-    const saving = ref(false)
-    const message = ref('')
+    const loading = ref(false)
+    const searchTerm = ref('')
 
-    const fetchRoles = async () => {
-      const { data } = await axios.get('/api/roles')
-      roles.value = data
-      if (roles.value.length && selectedRoleId.value == null) {
-        selectedRoleId.value = roles.value[0].roleId
-      }
-    }
+    // Computed property for filtered permissions
+    const filteredPermissions = computed(() => {
+      if (!searchTerm.value) return permissions.value
+      const term = searchTerm.value.toLowerCase()
+      return permissions.value.filter(permission => 
+        permission.permissionName?.toLowerCase().includes(term) ||
+        permission.description?.toLowerCase().includes(term)
+      )
+    })
 
     const fetchPermissions = async () => {
-      const { data } = await axios.get('/api/permissions')
-      permissions.value = data
-    }
-
-    const loadRolePermissions = async () => {
-      if (!selectedRoleId.value) return
-      const { data } = await axios.get(`/api/roles/${selectedRoleId.value}/permissions`)
-      selectedPermissionIds.value = data.permissionIds
-    }
-
-    const save = async () => {
       if (!hasRole('Admin')) {
-        message.value = 'Only Admin can update role permissions.'
+        ElMessage.error('Only Admin can view permissions.')
         return
       }
-      saving.value = true
-      message.value = ''
+      
+      loading.value = true
       try {
-        await axios.post(`/api/roles/${selectedRoleId.value}/permissions`, {
-          roleId: selectedRoleId.value,
-          permissionIds: selectedPermissionIds.value
-        })
-        message.value = 'Saved successfully.'
-      } catch (e) {
-        console.error(e)
-        message.value = 'Save failed.'
-      } finally {
-        saving.value = false
-      }
-    }
-
-    onMounted(async () => {
-      try {
-        await Promise.all([fetchRoles(), fetchPermissions()])
-        await loadRolePermissions()
+        console.log('Fetching permissions...')
+        const response = await axios.get('/api/permissions')
+        console.log('Permissions response:', response.data)
+        permissions.value = response.data
+        ElMessage.success('Permissions loaded successfully')
+      } catch (error) {
+        console.error('Failed to fetch permissions:', error)
+        console.error('Error response:', error.response?.data)
+        console.error('Error status:', error.response?.status)
+        ElMessage.error(`Failed to load permissions: ${error.response?.data?.message || error.message}`)
       } finally {
         loading.value = false
       }
+    }
+
+    const handleSearch = () => {
+      // Search is handled by computed property
+    }
+
+    onMounted(async () => {
+      await fetchPermissions()
     })
 
     return {
-      roles,
       permissions,
-      selectedRoleId,
-      selectedPermissionIds,
+      filteredPermissions,
       loading,
-      saving,
-      message,
-      loadRolePermissions,
-      save
+      searchTerm,
+      fetchPermissions,
+      handleSearch
     }
   }
 }
 </script>
 
 <style scoped>
-.page-container { padding: 16px; }
-.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
-.grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
-.perm-list { display: grid; grid-template-columns: 1fr; gap: 8px; }
-.perm-item { display: flex; gap: 8px; align-items: center; }
-.perm-name { font-weight: 600; }
-.status { color: #555; }
+.role-permissions-container {
+  padding: 20px;
+}
+
+.role-permissions-card {
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #303133;
+}
+
+.search-filters {
+  margin-bottom: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  text-align: center;
+}
+
+.summary-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+
+.summary-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+}
+
+.summary-icon.total {
+  background-color: #409eff;
+}
+
+.summary-icon.active {
+  background-color: #67c23a;
+}
+
+.summary-text {
+  text-align: left;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #909399;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.loading-container {
+  margin: 20px 0;
+}
+
+.message-container {
+  margin-top: 20px;
+}
+
+.text-muted {
+  color: #909399;
+  font-style: italic;
+}
+
+.devotional-banner {
+  width: 100%;
+  min-height: 140px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(168,50,26,0.85), rgba(221,146,39,0.85)), var(--devotional-banner-bg), var(--devi-fallback);
+  background-size: cover;
+  background-position: center;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .search-filters .el-row {
+    row-gap: 10px;
+  }
+
+  .summary-value {
+    font-size: 20px;
+  }
+
+  .summary-label {
+    font-size: 12px;
+  }
+}
 </style>

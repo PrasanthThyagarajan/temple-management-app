@@ -12,14 +12,26 @@ import Donations from '../views/Donations.vue';
 import Events from '../views/Events.vue';
 import Temples from '../views/Temples.vue';
 import Products from '../views/Products.vue';
+import Areas from '../views/Areas.vue';
 import Categories from '../views/Categories.vue';
 import Sales from '../views/Sales.vue';
+import EventExpenses from '../views/EventExpenses.vue';
+import EventExpenseItems from '../views/EventExpenseItems.vue';
+import EventExpenseServices from '../views/EventExpenseServices.vue';
+import Vouchers from '../views/Vouchers.vue';
+import ApiTest from '../views/ApiTest.vue';
+import UserProfile from '../views/UserProfile.vue';
 
 const routes = [
   {
     path: '/',
     name: 'Home',
     component: Home
+  },
+  {
+    path: '/areas',
+    name: 'Areas',
+    component: Areas
   },
   {
     path: '/admin/role-permissions',
@@ -94,6 +106,51 @@ const routes = [
     name: 'AdminUserManagement',
     component: AdminUserManagement,
     meta: { requiresPermission: 'UserRoleConfiguration' }
+  },
+  {
+    path: '/event-expenses',
+    name: 'EventExpenses',
+    component: EventExpenses
+  },
+  {
+    path: '/event-expense-items',
+    name: 'EventExpenseItems',
+    component: EventExpenseItems
+  },
+  {
+    path: '/event-expense-services',
+    name: 'EventExpenseServices',
+    component: EventExpenseServices
+  },
+  {
+    path: '/vouchers',
+    name: 'Vouchers',
+    component: Vouchers,
+    meta: { requiresPermission: 'ExpenseApproval' }
+  },
+  {
+    path: '/manage-Expenses',
+    redirect: '/event-expenses'
+  },
+  {
+    path: '/create-manage-event',
+    name: 'CreateManageEvent',
+    component: Events
+  },
+  {
+    path: '/add-events',
+    name: 'AddEvents',
+    component: Events
+  },
+  {
+    path: '/api-test',
+    name: 'ApiTest',
+    component: ApiTest
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: UserProfile
   }
 ];
 
@@ -102,28 +159,7 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token');
-  const userRaw = localStorage.getItem('user');
-  const permsRaw = localStorage.getItem('permissions');
-  let roles = [];
-  let perms = [];
-  try {
-    roles = userRaw ? (JSON.parse(userRaw).roles || []) : [];
-    perms = permsRaw ? JSON.parse(permsRaw) : [];
-  } catch (_) {}
-
-  // Only allow Home for unauthenticated users; show login popup trigger via query
-  if (!token && to.name !== 'Home') {
-    return next({ name: 'Home', query: { login: '1', redirect: to.fullPath } });
-  }
-
-  const requiredPermission = to.matched.find(r => r.meta && r.meta.requiresPermission)?.meta.requiresPermission
-  // Admin always allowed
-  if (requiredPermission && !roles.includes('Admin') && !perms.includes(requiredPermission)) {
-    return next({ name: 'Home' });
-  }
-  return next();
-});
+// Router guard is now handled in main.js before router initialization
+// This ensures authentication verification happens before any routing
 
 export default router;

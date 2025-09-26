@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temple App Login Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        .info {
+            color: blue;
+        }
+        input {
+            margin: 5px;
+            padding: 5px;
+            width: 200px;
+        }
+        button {
+            margin: 5px;
+            padding: 5px 15px;
+            cursor: pointer;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Temple Management App - Authentication Test</h1>
+    
+    <div class="test-section">
+        <h2>Login Test</h2>
+        <div>
+            <input type="text" id="username" placeholder="Username or Email" value="admin@temple.com">
+            <input type="password" id="password" placeholder="Password" value="admin123">
+            <button onclick="testLogin()">Test Login</button>
+            <button onclick="testInvalidLogin()">Test Invalid Login</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Protected Endpoints Test</h2>
+        <button onclick="testGetMe()">Test /api/auth/me</button>
+        <button onclick="testGetRoles()">Test /api/auth/roles</button>
+        <button onclick="testGetPermissions()">Test /api/auth/permissions</button>
+        <button onclick="testProtectedEndpoint()">Test Protected Endpoint</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Frontend Integration Test</h2>
+        <button onclick="testFrontendLogin()">Test Frontend Login Function</button>
+        <button onclick="checkAuthState()">Check Auth State</button>
+        <button onclick="testLogout()">Test Logout</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:5051';
+        let currentAuth = null;
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            results.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            console.log(message);
+        }
+
+        async function testLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            log('Testing login with: ' + username);
+            
+            try {
+                const auth = btoa(`${username}:${password}`);
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${auth}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    currentAuth = auth;
+                    log('✓ Login successful!', 'success');
+                    log(`  User: ${data.user.email}`, 'info');
+                    log(`  Roles: ${data.roles.join(', ')}`, 'info');
+                    log(`  Permissions: ${data.permissions.length} permissions`, 'info');
+                } else {
+                    log('✗ Login failed: ' + data.message, 'error');
+                }
+            } catch (error) {
+                log('✗ Login error: ' + error.message, 'error');
+            }
+        }
+
+        async function testInvalidLogin() {
+            log('Testing login with invalid credentials');
+            
+            try {
+                const auth = btoa('invalid:invalid');
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Basic ${auth}`
+                    }
+                });
+
+                if (response.status === 401) {
+                    log('✓ Invalid credentials correctly rejected (401)', 'success');
+                } else {
+                    log('✗ Unexpected response: ' + response.status, 'error');
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testGetMe() {
+            log('Testing /api/auth/me endpoint');
+            
+            if (!currentAuth) {
+                log('✗ Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/me`, {
+                    headers: {
+                        'Authorization': `Basic ${currentAuth}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✓ User info retrieved successfully', 'success');
+                    log(`  User ID: ${data.userId}`, 'info');
+                    log(`  Email: ${data.email}`, 'info');
+                    log(`  Full Name: ${data.fullName}`, 'info');
+                } else {
+                    log('✗ Failed to get user info: ' + response.status, 'error');
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testGetRoles() {
+            log('Testing /api/auth/roles endpoint');
+            
+            if (!currentAuth) {
+                log('✗ Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/roles`, {
+                    headers: {
+                        'Authorization': `Basic ${currentAuth}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✓ Roles retrieved successfully', 'success');
+                    log(`  Roles: ${data.join(', ')}`, 'info');
+                } else {
+                    log('✗ Failed to get roles: ' + response.status, 'error');
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testGetPermissions() {
+            log('Testing /api/auth/permissions endpoint');
+            
+            if (!currentAuth) {
+                log('✗ Please login first', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/permissions`, {
+                    headers: {
+                        'Authorization': `Basic ${currentAuth}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('✓ Permissions retrieved successfully', 'success');
+                    log(`  Total permissions: ${data.length}`, 'info');
+                    if (data.length > 0) {
+                        log(`  Sample permissions: ${data.slice(0, 5).join(', ')}...`, 'info');
+                    }
+                } else {
+                    log('✗ Failed to get permissions: ' + response.status, 'error');
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function testProtectedEndpoint() {
+            log('Testing access to protected endpoint /api/users');
+            
+            // Test without auth
+            try {
+                const response = await fetch(`${API_BASE}/api/users`);
+                if (response.status === 401) {
+                    log('✓ Correctly rejected without auth (401)', 'success');
+                } else {
+                    log('✗ Should have been rejected: ' + response.status, 'error');
+                }
+            } catch (error) {
+                log('✗ Error: ' + error.message, 'error');
+            }
+
+            // Test with auth
+            if (currentAuth) {
+                try {
+                    const response = await fetch(`${API_BASE}/api/users`, {
+                        headers: {
+                            'Authorization': `Basic ${currentAuth}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        log('✓ Authorized access successful', 'success');
+                        const data = await response.json();
+                        log(`  Found ${data.length} users`, 'info');
+                    } else {
+                        log('✗ Failed with auth: ' + response.status, 'error');
+                    }
+                } catch (error) {
+                    log('✗ Error: ' + error.message, 'error');
+                }
+            }
+        }
+
+        async function testFrontendLogin() {
+            log('Testing frontend login function (window.templeAuth.login)');
+            
+            if (!window.templeAuth) {
+                log('✗ Frontend auth system not loaded', 'error');
+                log('  Make sure the Vue app is running', 'info');
+                return;
+            }
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const result = await window.templeAuth.login(username, password);
+                if (result.success) {
+                    log('✓ Frontend login successful!', 'success');
+                    log(`  User: ${result.user.email}`, 'info');
+                } else {
+                    log('✗ Frontend login failed: ' + result.message, 'error');
+                }
+            } catch (error) {
+                log('✗ Frontend login error: ' + error.message, 'error');
+            }
+        }
+
+        function checkAuthState() {
+            log('Checking authentication state');
+            
+            if (!window.templeAuth) {
+                log('✗ Frontend auth system not loaded', 'error');
+                return;
+            }
+
+            const user = window.templeAuth.getCurrentUser();
+            const token = window.templeAuth.getCurrentToken();
+            
+            if (user && token) {
+                log('✓ User is authenticated', 'success');
+                log(`  User: ${user.email}`, 'info');
+                log(`  Roles: ${user.roles?.join(', ') || 'none'}`, 'info');
+                log(`  Has Admin role: ${window.templeAuth.hasRole('Admin')}`, 'info');
+            } else {
+                log('✗ User is not authenticated', 'error');
+            }
+        }
+
+        function testLogout() {
+            log('Testing logout');
+            
+            if (!window.templeAuth) {
+                log('✗ Frontend auth system not loaded', 'error');
+                return;
+            }
+
+            window.templeAuth.logout(false);
+            currentAuth = null;
+            log('✓ Logged out successfully', 'success');
+        }
+
+        // Auto-start with a test
+        window.onload = () => {
+            log('Authentication Test Page Loaded', 'success');
+            log('API Base URL: ' + API_BASE, 'info');
+        };
+    </script>
+</body>
+</html>

@@ -1,5 +1,45 @@
 <template>
   <div class="events-container">
+    <!-- Enhanced Summary Cards -->
+    <el-row :gutter="20" class="summary-cards">
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Total Events" :value="summaryStats.total">
+            <template #prefix>
+              <el-icon style="vertical-align: middle;"><Calendar /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card upcoming">
+          <el-statistic title="Upcoming Events" :value="summaryStats.upcoming">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #409eff;"><Clock /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card ongoing">
+          <el-statistic title="Ongoing Events" :value="summaryStats.ongoing">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #67c23a;"><VideoPlay /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="6">
+        <el-card class="summary-card">
+          <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
+            <template #prefix>
+              <el-icon style="vertical-align: middle; color: #e6a23c;"><Filter /></el-icon>
+            </template>
+          </el-statistic>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <el-card class="events-card">
       <template #header>
         <div class="card-header">
@@ -11,7 +51,7 @@
         </div>
       </template>
 
-      <!-- Search and Filters -->
+      <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <div class="devotional-banner events-banner"></div>
         <el-row :gutter="20">
@@ -29,16 +69,18 @@
           </el-col>
           <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
             <el-select
-              v-model="templeFilter"
-              placeholder="Filter by Temple"
+              v-model="areaFilter"
+              placeholder="Filter by Area"
               clearable
-              @change="handleTempleFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Area" value="" />
               <el-option
-                v-for="temple in temples"
-                :key="temple.id"
-                :label="temple.name"
-                :value="temple.id"
+                v-for="area in areas"
+                :key="area.id"
+                :label="area.name"
+                :value="area.id"
               />
             </el-select>
           </el-col>
@@ -47,12 +89,28 @@
               v-model="statusFilter"
               placeholder="Filter by Status"
               clearable
-              @change="handleStatusFilter"
+              @change="handleFilterChange"
+              style="width: 100%"
             >
+              <el-option label="Any Status" value="" />
               <el-option label="Upcoming" value="Upcoming" />
               <el-option label="Ongoing" value="Ongoing" />
               <el-option label="Completed" value="Completed" />
               <el-option label="Cancelled" value="Cancelled" />
+            </el-select>
+          </el-col>
+          <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
+            <el-select
+              v-model="sortBy"
+              placeholder="Sort by"
+              @change="handleSortChange"
+              style="width: 100%"
+            >
+              <el-option label="Start Date (Newest)" value="startDate-desc" />
+              <el-option label="Start Date (Oldest)" value="startDate-asc" />
+              <el-option label="Name (A-Z)" value="name-asc" />
+              <el-option label="Name (Z-A)" value="name-desc" />
+              <el-option label="Recently Added" value="id-desc" />
             </el-select>
           </el-col>
           <el-col :xs="12" :sm="6" :md="4" :lg="4" :xl="4">
@@ -63,78 +121,12 @@
               format="YYYY-MM-DD"
               value-format="YYYY-MM-DD"
               @change="handleDateFilter"
+              style="width: 100%"
             />
-          </el-col>
-          <el-col :xs="24" :sm="24" :md="6" :lg="6" :xl="6">
-            <el-button @click="loadEvents" :loading="loading">
-              <el-icon><Refresh /></el-icon>
-              Refresh
-            </el-button>
-            <el-button type="success" @click="showCalendarView = !showCalendarView">
-              <el-icon><Calendar /></el-icon>
-              {{ showCalendarView ? 'List View' : 'Calendar View' }}
-            </el-button>
           </el-col>
         </el-row>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="summary-cards">
-        <el-row :gutter="20">
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon total">
-                  <el-icon><Calendar /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ totalEvents }}</div>
-                  <div class="summary-label">Total Events</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon upcoming">
-                  <el-icon><Clock /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ upcomingEvents }}</div>
-                  <div class="summary-label">Upcoming</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon ongoing">
-                  <el-icon><VideoPlay /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ ongoingEvents }}</div>
-                  <div class="summary-label">Ongoing</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-          <el-col :xs="12" :sm="6" :md="6" :lg="6" :xl="6">
-            <el-card class="summary-card">
-              <div class="summary-content">
-                <div class="summary-icon completed">
-                  <el-icon><Check /></el-icon>
-                </div>
-                <div class="summary-text">
-                  <div class="summary-value">{{ completedEvents }}</div>
-                  <div class="summary-label">Completed</div>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
 
       <!-- Calendar View -->
       <div v-if="showCalendarView" class="calendar-view">
@@ -161,15 +153,35 @@
       <!-- Events Table -->
       <div v-else class="table-container">
         <el-table
-          :data="events"
+          :data="paginatedEvents"
           v-loading="loading"
           stripe
           style="width: 100%"
           @row-click="handleRowClick"
+          @sort-change="handleTableSortChange"
         >
-          <el-table-column prop="name" label="Event Name" min-width="200" />
-          <el-table-column prop="templeName" label="Temple" min-width="150" />
-          <el-table-column prop="startDate" label="Start Date" width="120">
+          <el-table-column 
+            prop="name" 
+            label="Event Name" 
+            min-width="200" 
+            sortable="custom"
+          />
+          <el-table-column 
+            label="Area" 
+            min-width="150"
+            prop="area.name"
+            sortable="custom"
+          >
+            <template #default="scope">
+              {{ scope.row.area?.name || '—' }}
+            </template>
+          </el-table-column>
+          <el-table-column 
+            prop="startDate" 
+            label="Start Date" 
+            width="120"
+            sortable="custom"
+          >
             <template #default="scope">
               {{ formatDate(scope.row.startDate) }}
             </template>
@@ -179,8 +191,7 @@
               {{ formatDate(scope.row.endDate) }}
             </template>
           </el-table-column>
-          <el-table-column prop="startTime" label="Start Time" width="100" />
-          <el-table-column prop="endTime" label="End Time" width="100" />
+          
           <el-table-column prop="status" label="Status" width="100">
             <template #default="scope">
               <el-tag :type="getStatusTagType(scope.row.status)">
@@ -188,10 +199,10 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="type" label="Type" width="120">
+          <el-table-column label="Type" width="160">
             <template #default="scope">
-              <el-tag :type="getTypeTagType(scope.row.type)">
-                {{ scope.row.type }}
+              <el-tag :type="getTypeTagType(scope.row.eventType?.name)">
+                {{ scope.row.eventType?.name || '—' }}
               </el-tag>
             </template>
           </el-table-column>
@@ -231,13 +242,14 @@
           </el-table-column>
         </el-table>
 
-        <!-- Pagination -->
+        <!-- Enhanced Pagination -->
         <div class="pagination-container">
           <el-pagination
-            :current-page="currentPage"
-            :page-size="pageSize"
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
-            :total="totalEvents"
+            :total="filteredBeforePagination.length"
+            :background="true"
             layout="total, sizes, prev, pager, next, jumper"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
@@ -265,17 +277,17 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="Temple" prop="templeId">
+            <el-form-item label="Area" prop="areaId">
               <el-select
-                v-model="eventForm.templeId"
-                placeholder="Select temple"
+                v-model="eventForm.areaId"
+                placeholder="Select area"
                 style="width: 100%"
               >
                 <el-option
-                  v-for="temple in temples"
-                  :key="temple.id"
-                  :label="temple.name"
-                  :value="temple.id"
+                  v-for="area in areas"
+                  :key="area.id"
+                  :label="area.name"
+                  :value="area.id"
                 />
               </el-select>
             </el-form-item>
@@ -283,13 +295,14 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="Event Type" prop="type">
-              <el-select v-model="eventForm.type" placeholder="Select event type">
-                <el-option label="Puja" value="Puja" />
-                <el-option label="Festival" value="Festival" />
-                <el-option label="Ceremony" value="Ceremony" />
-                <el-option label="Workshop" value="Workshop" />
-                <el-option label="Other" value="Other" />
+            <el-form-item label="Event Type" prop="eventTypeId">
+              <el-select v-model="eventForm.eventTypeId" placeholder="Select event type">
+                <el-option
+                  v-for="t in eventTypes"
+                  :key="t.id"
+                  :label="t.name"
+                  :value="t.id"
+                />
               </el-select>
             </el-form-item>
           </el-col>
@@ -306,54 +319,31 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="Start Date" prop="startDate">
+            <el-form-item label="Start" prop="startDate">
               <el-date-picker
                 v-model="eventForm.startDate"
-                type="date"
-                placeholder="Select start date"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                type="datetime"
+                placeholder="Select start date & time"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ss"
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="End Date" prop="endDate">
+            <el-form-item label="End" prop="endDate">
               <el-date-picker
                 v-model="eventForm.endDate"
-                type="date"
-                placeholder="Select end date"
-                format="YYYY-MM-DD"
-                value-format="YYYY-MM-DD"
+                type="datetime"
+                placeholder="Select end date & time"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DDTHH:mm:ss"
                 style="width: 100%"
               />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="Start Time" prop="startTime">
-              <el-time-picker
-                v-model="eventForm.startTime"
-                placeholder="Select start time"
-                format="HH:mm"
-                value-format="HH:mm"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="End Time" prop="endTime">
-              <el-time-picker
-                v-model="eventForm.endTime"
-                placeholder="Select end time"
-                format="HH:mm"
-                value-format="HH:mm"
-                style="width: 100%"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        
         <el-form-item label="Description" prop="description">
           <el-input
             v-model="eventForm.description"
@@ -378,6 +368,9 @@
             :rows="3"
             placeholder="Enter any additional notes"
           />
+        </el-form-item>
+        <el-form-item label="Approval Needed" prop="isApprovalNeeded">
+          <el-checkbox v-model="eventForm.isApprovalNeeded">Is Approval Needed</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -406,10 +399,10 @@
               {{ selectedEvent.status }}
             </el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="Temple">{{ selectedEvent.templeName }}</el-descriptions-item>
+          <el-descriptions-item label="Area">{{ selectedEvent.area?.name }}</el-descriptions-item>
           <el-descriptions-item label="Type">
-            <el-tag :type="getTypeTagType(selectedEvent.type)">
-              {{ selectedEvent.type }}
+            <el-tag :type="getTypeTagType(selectedEvent.eventType?.name)">
+              {{ selectedEvent.eventType?.name }}
             </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Start Date">
@@ -418,8 +411,8 @@
           <el-descriptions-item label="End Date">
             {{ formatDate(selectedEvent.endDate) }}
           </el-descriptions-item>
-          <el-descriptions-item label="Start Time">{{ selectedEvent.startTime }}</el-descriptions-item>
-          <el-descriptions-item label="End Time">{{ selectedEvent.endTime }}</el-descriptions-item>
+          <el-descriptions-item label="Start">{{ formatDateTime(selectedEvent.startDate) }}</el-descriptions-item>
+          <el-descriptions-item label="End">{{ formatDateTime(selectedEvent.endDate) }}</el-descriptions-item>
           <el-descriptions-item label="Location">{{ selectedEvent.location }}</el-descriptions-item>
           <el-descriptions-item label="Organizer">{{ selectedEvent.organizer }}</el-descriptions-item>
           <el-descriptions-item label="Contact">{{ selectedEvent.contact }}</el-descriptions-item>
@@ -438,22 +431,23 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Calendar, Clock, VideoPlay, Check, Close } from '@element-plus/icons-vue'
+import { Plus, Search, Refresh, Edit, Delete, Calendar, Clock, VideoPlay, Check, Close, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
 // Reactive data
 const events = ref([])
-const temples = ref([])
+const areas = ref([])
+const eventTypes = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
-const templeFilter = ref('')
+const areaFilter = ref('')
 const statusFilter = ref('')
 const dateFilter = ref('')
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalEvents = ref(0)
+const sortBy = ref('startDate-desc')
 const showCreateDialog = ref(false)
 const showDetailsDialog = ref(false)
 const showCalendarView = ref(false)
@@ -464,49 +458,119 @@ const currentDate = ref(new Date())
 // Form data
 const eventForm = reactive({
   name: '',
-  templeId: '',
-  type: '',
-  status: 'Upcoming',
+  areaId: '',
+  eventTypeId: '',
+  status: '',
   startDate: '',
   endDate: '',
-  startTime: '',
-  endTime: '',
   description: '',
   location: '',
   organizer: '',
   contact: '',
-  notes: ''
+  notes: '',
+  isApprovalNeeded: false
 })
 
 // Form validation rules
 const eventRules = {
   name: [{ required: true, message: 'Event name is required', trigger: 'blur' }],
-  templeId: [{ required: true, message: 'Temple selection is required', trigger: 'change' }],
-  type: [{ required: true, message: 'Event type is required', trigger: 'change' }],
+  areaId: [{ required: true, message: 'Area is required', trigger: 'change' }],
+  eventTypeId: [{ required: true, message: 'Event type is required', trigger: 'change' }],
   status: [{ required: true, message: 'Status is required', trigger: 'change' }],
   startDate: [{ required: true, message: 'Start date is required', trigger: 'change' }],
   endDate: [{ required: true, message: 'End date is required', trigger: 'change' }],
-  startTime: [{ required: true, message: 'Start time is required', trigger: 'change' }],
-  endTime: [{ required: true, message: 'End time is required', trigger: 'change' }],
   description: [{ required: true, message: 'Description is required', trigger: 'blur' }]
 }
 
 const eventFormRef = ref()
 
-// API base URL
-const API_BASE = 'http://localhost:5051/api'
+// API base URL (use Vite proxy)
+const API_BASE = '/api'
 
-// Computed properties
-const upcomingEvents = computed(() => {
-  return events.value.filter(event => event.status === 'Upcoming').length
+// Summary Statistics
+const summaryStats = computed(() => {
+  return {
+    total: events.value.length,
+    upcoming: events.value.filter(e => e.status === 'Upcoming').length,
+    ongoing: events.value.filter(e => e.status === 'Ongoing').length,
+    completed: events.value.filter(e => e.status === 'Completed').length
+  }
 })
 
-const ongoingEvents = computed(() => {
-  return events.value.filter(event => event.status === 'Ongoing').length
+// Filtering and Sorting
+const filteredBeforePagination = computed(() => {
+  let result = [...events.value]
+  
+  // Apply search filter
+  if (searchTerm.value) {
+    const term = searchTerm.value.toLowerCase()
+    result = result.filter(e =>
+      e.name?.toLowerCase().includes(term) ||
+      e.description?.toLowerCase().includes(term) ||
+      e.location?.toLowerCase().includes(term) ||
+      e.area?.name?.toLowerCase().includes(term)
+    )
+  }
+  
+  // Apply area filter
+  if (areaFilter.value) {
+    result = result.filter(e => e.areaId === parseInt(areaFilter.value))
+  }
+  
+  // Apply status filter
+  if (statusFilter.value) {
+    result = result.filter(e => e.status === statusFilter.value)
+  }
+  
+  // Apply date filter
+  if (dateFilter.value) {
+    const filterDate = dayjs(dateFilter.value)
+    result = result.filter(e => {
+      const startDate = dayjs(e.startDate)
+      const endDate = dayjs(e.endDate)
+      return filterDate.isBetween(startDate, endDate, 'day', '[]')
+    })
+  }
+  
+  // Apply sorting
+  if (sortBy.value) {
+    const [field, order] = sortBy.value.split('-')
+    result.sort((a, b) => {
+      let aVal, bVal
+      
+      switch(field) {
+        case 'startDate':
+          aVal = new Date(a.startDate).getTime()
+          bVal = new Date(b.startDate).getTime()
+          break
+        case 'name':
+          aVal = (a.name || '').toLowerCase()
+          bVal = (b.name || '').toLowerCase()
+          break
+        case 'id':
+          aVal = a.id
+          bVal = b.id
+          break
+        default:
+          aVal = a[field]
+          bVal = b[field]
+      }
+      
+      if (order === 'asc') {
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+  }
+  
+  return result
 })
 
-const completedEvents = computed(() => {
-  return events.value.filter(event => event.status === 'Completed').length
+// Paginated data
+const paginatedEvents = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredBeforePagination.value.slice(start, start + pageSize.value)
 })
 
 // Methods
@@ -524,84 +588,77 @@ const loadEvents = async () => {
   }
 }
 
-const loadTemples = async () => {
+const loadAreas = async () => {
   try {
-    const response = await axios.get(`${API_BASE}/temples`)
-    temples.value = response.data
+    console.log('🔍 Events: Loading areas...')
+    const response = await axios.get(`${API_BASE}/areas`)
+    console.log('🔍 Events: Areas response:', response.data)
+    areas.value = response.data
+    console.log('🔍 Events: Areas loaded:', areas.value.length)
   } catch (error) {
-    console.error('Error loading temples:', error)
+    console.error('🚨 Events: Error loading areas:', error)
+    ElMessage.error('Failed to load areas')
+  }
+}
+
+const loadEventTypes = async () => {
+  try {
+    console.log('🔍 Events: Loading event types...')
+    const response = await axios.get(`${API_BASE}/event-types`)
+    console.log('🔍 Events: Event types response:', response.data)
+    eventTypes.value = response.data
+    console.log('🔍 Events: Event types loaded:', eventTypes.value.length)
+  } catch (error) {
+    console.error('🚨 Events: Error loading event types:', error)
+    ElMessage.error('Failed to load event types')
   }
 }
 
 const handleSearch = () => {
-  if (searchTerm.value.trim()) {
-    searchEvents(searchTerm.value)
+  currentPage.value = 1
+}
+
+const handleFilterChange = () => {
+  currentPage.value = 1
+}
+
+const handleSortChange = () => {
+  // Sorting doesn't require resetting pagination
+}
+
+const handleTableSortChange = ({ prop, order }) => {
+  if (!order) {
+    sortBy.value = 'startDate-desc'
   } else {
-    loadEvents()
-  }
-}
-
-const searchEvents = async (term) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/events/search/${term}`)
-    events.value = response.data
-    totalEvents.value = response.data.length
-  } catch (error) {
-    console.error('Error searching events:', error)
-    ElMessage.error('Failed to search events')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleTempleFilter = () => {
-  if (templeFilter.value) {
-    filterByTemple(templeFilter.value)
-  } else {
-    loadEvents()
-  }
-}
-
-const filterByTemple = async (templeId) => {
-  try {
-    loading.value = true
-    const response = await axios.get(`${API_BASE}/temples/${templeId}/events`)
-    events.value = response.data
-    totalEvents.value = response.data.length
-  } catch (error) {
-    console.error('Error filtering by temple:', error)
-    ElMessage.error('Failed to filter events by temple')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleStatusFilter = () => {
-  if (statusFilter.value) {
-    events.value = events.value.filter(event => event.status === statusFilter.value)
-    totalEvents.value = events.value.length
-  } else {
-    loadEvents()
+    let field = prop
+    if (prop === 'startDate') field = 'startDate'
+    else if (prop === 'name') field = 'name'
+    else if (prop === 'area.name') field = 'area'
+    
+    sortBy.value = `${field}-${order === 'ascending' ? 'asc' : 'desc'}`
   }
 }
 
 const handleDateFilter = () => {
-  if (dateFilter.value) {
-    const filterDate = dayjs(dateFilter.value)
-    events.value = events.value.filter(event => {
-      const eventDate = dayjs(event.startDate)
-      return eventDate.isSame(filterDate, 'day')
-    })
-    totalEvents.value = events.value.length
-  } else {
-    loadEvents()
-  }
+  currentPage.value = 1
 }
 
 const editEvent = (event) => {
   editingEvent.value = event
-  Object.assign(eventForm, event)
+  Object.assign(eventForm, {
+    name: event.name,
+    areaId: event.area?.id || '',
+    eventTypeId: event.eventType?.id || '',
+    status: event.status || '',
+    startDate: event.startDate,
+    endDate: event.endDate,
+    description: event.description,
+    location: event.location,
+    organizer: event.organizer,
+    contact: event.contact,
+    notes: event.notes,
+    isApprovalNeeded: event.isApprovalNeeded
+  })
   showCreateDialog.value = true
 }
 
@@ -684,18 +741,17 @@ const resetForm = () => {
   editingEvent.value = null
   Object.assign(eventForm, {
     name: '',
-    templeId: '',
-    type: '',
-    status: 'Upcoming',
+    areaId: '',
+    eventTypeId: '',
+    status: '',
     startDate: '',
     endDate: '',
-    startTime: '',
-    endTime: '',
     description: '',
     location: '',
     organizer: '',
     contact: '',
-    notes: ''
+    notes: '',
+    isApprovalNeeded: false
   })
   eventFormRef.value?.resetFields()
 }
@@ -703,6 +759,11 @@ const resetForm = () => {
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A'
   return dayjs(dateString).format('MMM DD, YYYY')
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A'
+  return dayjs(dateString).format('MMM DD, YYYY HH:mm')
 }
 
 const getStatusTagType = (status) => {
@@ -746,24 +807,49 @@ const getEventsForDate = (date) => {
 
 const handleSizeChange = (val) => {
   pageSize.value = val
-  loadEvents()
+  currentPage.value = 1
 }
 
 const handleCurrentChange = (val) => {
   currentPage.value = val
-  loadEvents()
 }
 
 // Lifecycle
-onMounted(() => {
-  loadEvents()
-  loadTemples()
+onMounted(async () => {
+  await loadAreas()
+  await loadEventTypes()
+  await loadEvents()
 })
 </script>
 
 <style scoped>
 .events-container {
   padding: 20px;
+}
+
+.summary-cards {
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  transition: all 0.3s;
+}
+
+.summary-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
+}
+
+.summary-card .el-statistic {
+  padding: 20px 0;
+}
+
+.summary-card.upcoming {
+  border-left: 4px solid #409eff;
+}
+
+.summary-card.ongoing {
+  border-left: 4px solid #67c23a;
 }
 
 .events-card {

@@ -40,6 +40,11 @@ namespace TempleApi.Models
         [StringLength(100)]
         public string? TempleType { get; set; }
         
+        public int EstablishedYear { get; set; }
+        public string MainDeity { get; set; } = string.Empty;
+        public string Status { get; set; } = "Active";
+        public int TempleId => Id; // Assuming TempleId is an alias for Id
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         public DateTime? UpdatedAt { get; set; }

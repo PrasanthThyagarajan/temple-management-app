@@ -19,7 +19,7 @@ namespace TempleApi.Services
         {
             return await _context.Temples
                 .Where(t => t.IsActive)
-                .OrderBy(t => t.Name)
+                .OrderByDescending(t => t.Id)
                 .ToListAsync();
         }
 
@@ -101,7 +101,7 @@ namespace TempleApi.Services
                     t.State.ToLower().Contains(normalizedSearchTerm) ||
                     t.Deity.ToLower().Contains(normalizedSearchTerm)
                 ))
-                .OrderBy(t => t.Name)
+                .OrderByDescending(t => t.Id)
                 .ToListAsync();
         }
 
@@ -115,7 +115,7 @@ namespace TempleApi.Services
             }
 
             return await query
-                .OrderBy(t => t.Name)
+                .OrderByDescending(t => t.Id)
                 .ToListAsync();
         }
     }

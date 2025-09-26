@@ -64,7 +64,8 @@ namespace TempleApi.Services
                 FinalAmount = createSaleDto.FinalAmount,
                 PaymentMethod = createSaleDto.PaymentMethod,
                 IsActive = createSaleDto.Status == "Completed",
-                Notes = createSaleDto.Notes
+                Notes = createSaleDto.Notes,
+                EventId = createSaleDto.EventId,
             };
 
             await _saleRepository.AddAsync(sale);

@@ -5,6 +5,8 @@ using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Configuration;
 
 namespace TempleApi.Tests
 {
@@ -20,7 +22,9 @@ namespace TempleApi.Tests
 				.Options;
 
 			_context = new TempleDbContext(options);
-			_devoteeService = new DevoteeService(_context);
+			var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string>()).Build();
+			var logger = new NullLogger<DevoteeService>();
+			_devoteeService = new DevoteeService(_context, config, logger);
 		}
 
 		#region Create Tests
@@ -32,26 +36,24 @@ namespace TempleApi.Tests
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 
-			var dto = new CreateDevoteeDto
-			{
-				FirstName = "John",
-				LastName = "Doe",
-				Email = "john@test.com",
-				Phone = "123",
-				Address = "Addr",
-				City = "City",
-				State = "State",
-				PostalCode = "00001",
-				DateOfBirth = DateTime.UtcNow.AddYears(-30),
-				Gender = "Male",
-				TempleId = temple.Id
-			};
+            var dto = new CreateDevoteeDto
+            {
+                Name = "John Doe",
+                Email = "john@test.com",
+                Phone = "123",
+                Address = "Addr",
+                City = "City",
+                State = "State",
+                PostalCode = "00001",
+                DateOfBirth = DateTime.UtcNow.AddYears(-30),
+                Gender = "Male",
+                TempleId = temple.Id
+            };
 
 			var result = await _devoteeService.CreateDevoteeAsync(dto);
 
-			result.Should().NotBeNull();
-			result.FirstName.Should().Be(dto.FirstName);
-			result.LastName.Should().Be(dto.LastName);
+            result.Should().NotBeNull();
+            result.FullName.Should().Be(dto.Name);
 			result.Email.Should().Be(dto.Email);
 			result.Phone.Should().Be(dto.Phone);
 			result.Address.Should().Be(dto.Address);
@@ -63,18 +65,42 @@ namespace TempleApi.Tests
 		}
 
 		[Fact]
+		public async Task CreateDevoteeWithUserAsync_ShouldCreateUser_AndReturnPassword_WhenEmailPresent()
+		{
+			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
+			_context.Temples.Add(temple);
+			await _context.SaveChangesAsync();
+
+            var dto = new CreateDevoteeDto
+            {
+                Name = "User FromDevotee",
+                Email = "devoteeuser@test.com",
+                TempleId = temple.Id
+            };
+
+			var (devotee, generatedPassword) = await _devoteeService.CreateDevoteeWithUserAsync(dto);
+
+			devotee.Should().NotBeNull();
+			generatedPassword.Should().NotBeNull();
+			generatedPassword!.Length.Should().BeGreaterOrEqualTo(8);
+
+			var createdUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
+			createdUser.Should().NotBeNull();
+			createdUser!.FullName.Should().Be("User FromDevotee");
+		}
+
+		[Fact]
 		public async Task CreateDevoteeAsync_ShouldHandleMinimalData()
 		{
 			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 
-			var dto = new CreateDevoteeDto { FirstName = "Jane", LastName = "Smith", TempleId = temple.Id };
+            var dto = new CreateDevoteeDto { Name = "Jane Smith", TempleId = temple.Id };
 			var result = await _devoteeService.CreateDevoteeAsync(dto);
 
 			result.Should().NotBeNull();
-			result.FirstName.Should().Be("Jane");
-			result.LastName.Should().Be("Smith");
+            result.FullName.Should().Be("Jane Smith");
 		}
 
 		#endregion
@@ -88,28 +114,27 @@ namespace TempleApi.Tests
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 
-			var devotee = new Devotee
-			{
-				FirstName = "John",
-				LastName = "Doe",
-				Email = "john@test.com",
-				Phone = "123",
-				Address = "Addr",
-				City = "City",
-				State = "State",
-				PostalCode = "00001",
-				DateOfBirth = DateTime.UtcNow.AddYears(-30),
-				Gender = "Male",
-				TempleId = temple.Id,
-				IsActive = true
-			};
+            var devotee = new Devotee
+            {
+                FullName = "John Doe",
+                Email = "john@test.com",
+                Phone = "123",
+                Address = "Addr",
+                City = "City",
+                State = "State",
+                PostalCode = "00001",
+                DateOfBirth = DateTime.UtcNow.AddYears(-30),
+                Gender = "Male",
+                TempleId = temple.Id,
+                IsActive = true
+            };
 			_context.Devotees.Add(devotee);
 			await _context.SaveChangesAsync();
 
 			var result = await _devoteeService.GetDevoteeByIdAsync(devotee.Id);
 
-			result.Should().NotBeNull();
-			result!.FirstName.Should().Be("John");
+            result.Should().NotBeNull();
+            result!.FullName.Should().Be("John Doe");
 			result.Temple.Should().NotBeNull();
 		}
 
@@ -127,11 +152,11 @@ namespace TempleApi.Tests
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 
-			_context.Devotees.AddRange(
-				new Devotee { FirstName = "A", LastName = "A", TempleId = temple.Id, IsActive = true },
-				new Devotee { FirstName = "B", LastName = "B", TempleId = temple.Id, IsActive = true },
-				new Devotee { FirstName = "C", LastName = "C", TempleId = temple.Id, IsActive = false }
-			);
+            _context.Devotees.AddRange(
+                new Devotee { FullName = "A A", TempleId = temple.Id, IsActive = true },
+                new Devotee { FullName = "B B", TempleId = temple.Id, IsActive = true },
+                new Devotee { FullName = "C C", TempleId = temple.Id, IsActive = false }
+            );
 			await _context.SaveChangesAsync();
 
 			var result = await _devoteeService.GetAllDevoteesAsync();
@@ -146,11 +171,11 @@ namespace TempleApi.Tests
 			_context.Temples.AddRange(t1, t2);
 			await _context.SaveChangesAsync();
 
-			_context.Devotees.AddRange(
-				new Devotee { FirstName = "A", LastName = "A", TempleId = t1.Id, IsActive = true },
-				new Devotee { FirstName = "B", LastName = "B", TempleId = t1.Id, IsActive = true },
-				new Devotee { FirstName = "C", LastName = "C", TempleId = t2.Id, IsActive = true }
-			);
+            _context.Devotees.AddRange(
+                new Devotee { FullName = "A A", TempleId = t1.Id, IsActive = true },
+                new Devotee { FullName = "B B", TempleId = t1.Id, IsActive = true },
+                new Devotee { FullName = "C C", TempleId = t2.Id, IsActive = true }
+            );
 			await _context.SaveChangesAsync();
 
 			var result = await _devoteeService.GetDevoteesByTempleAsync(t1.Id);
@@ -164,10 +189,10 @@ namespace TempleApi.Tests
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
 
-			_context.Devotees.AddRange(
-				new Devotee { FirstName = "John", LastName = "Doe", Email = "j@x.com", Phone = "111", City = "X", State = "Y", TempleId = t.Id, IsActive = true },
-				new Devotee { FirstName = "Jane", LastName = "Smith", Email = "js@x.com", Phone = "222", City = "Z", State = "W", TempleId = t.Id, IsActive = true }
-			);
+            _context.Devotees.AddRange(
+                new Devotee { FullName = "John Doe", Email = "j@x.com", Phone = "111", City = "X", State = "Y", TempleId = t.Id, IsActive = true },
+                new Devotee { FullName = "Jane Smith", Email = "js@x.com", Phone = "222", City = "Z", State = "W", TempleId = t.Id, IsActive = true }
+            );
 			await _context.SaveChangesAsync();
 
 			var result = await _devoteeService.SearchDevoteesAsync("john");
@@ -185,22 +210,22 @@ namespace TempleApi.Tests
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
 
-			var d = new Devotee { FirstName = "Orig", LastName = "User", TempleId = t.Id, IsActive = true };
+            var d = new Devotee { FullName = "Orig User", TempleId = t.Id, IsActive = true };
 			_context.Devotees.Add(d);
 			await _context.SaveChangesAsync();
 
-			var dto = new CreateDevoteeDto { FirstName = "Upd", LastName = "User", Email = "u@test.com", Phone = "9", Address = "NA", City = "C", State = "S", PostalCode = "1", TempleId = t.Id };
+            var dto = new CreateDevoteeDto { Name = "Upd User", Email = "u@test.com", Phone = "9", Address = "NA", City = "C", State = "S", PostalCode = "1", TempleId = t.Id };
 			var result = await _devoteeService.UpdateDevoteeAsync(d.Id, dto);
 
 			result.Should().NotBeNull();
-			result!.FirstName.Should().Be("Upd");
+            result!.FullName.Should().Be("Upd User");
 			result.Email.Should().Be("u@test.com");
 		}
 
 		[Fact]
 		public async Task UpdateDevoteeAsync_ShouldReturnNull_WhenNotFound()
 		{
-			var dto = new CreateDevoteeDto { FirstName = "X", LastName = "Y", TempleId = 1 };
+            var dto = new CreateDevoteeDto { Name = "X Y", TempleId = 1 };
 			var result = await _devoteeService.UpdateDevoteeAsync(999, dto);
 			result.Should().BeNull();
 		}
@@ -211,7 +236,7 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var d = new Devotee { FirstName = "Del", LastName = "Me", TempleId = t.Id, IsActive = true };
+            var d = new Devotee { FullName = "Del Me", TempleId = t.Id, IsActive = true };
 			_context.Devotees.Add(d);
 			await _context.SaveChangesAsync();
 

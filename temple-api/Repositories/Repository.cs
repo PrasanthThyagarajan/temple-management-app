@@ -40,10 +40,15 @@ namespace TempleApi.Repositories
             
             if (hasIsActiveProperty)
             {
-                return await _dbSet.Where(e => EF.Property<bool>(e, "IsActive")).ToListAsync();
+                return await _dbSet
+                    .Where(e => EF.Property<bool>(e, "IsActive"))
+                    .OrderByDescending(e => EF.Property<int>(e, "Id"))
+                    .ToListAsync();
             }
             
-            return await _dbSet.ToListAsync();
+            return await _dbSet
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
+                .ToListAsync();
         }
 
         public virtual async Task<IEnumerable<T>> GetAllAsync(params Expression<Func<T, object?>>[] includes)
@@ -63,12 +68,17 @@ namespace TempleApi.Repositories
                 query = query.Where(e => EF.Property<bool>(e, "IsActive"));
             }
             
-            return await query.ToListAsync();
+            return await query
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
+                .ToListAsync();
         }
 
         public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate)
         {
-            return await _dbSet.Where(predicate).ToListAsync();
+            return await _dbSet
+                .Where(predicate)
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
+                .ToListAsync();
         }
 
         public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, params Expression<Func<T, object?>>[] includes)
@@ -80,7 +90,10 @@ namespace TempleApi.Repositories
                 query = query.Include(include);
             }
             
-            return await query.Where(predicate).ToListAsync();
+            return await query
+                .Where(predicate)
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
+                .ToListAsync();
         }
 
         public virtual async Task<T?> FirstOrDefaultAsync(Expression<Func<T, bool>> predicate)
@@ -145,6 +158,7 @@ namespace TempleApi.Repositories
                 return false;
                 
             _dbSet.Remove(entity);
+            await _context.SaveChangesAsync();
             return true;
         }
 
@@ -194,6 +208,7 @@ namespace TempleApi.Repositories
         public virtual async Task<IEnumerable<T>> GetPagedAsync(int pageNumber, int pageSize)
         {
             return await _dbSet
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -203,6 +218,7 @@ namespace TempleApi.Repositories
         {
             return await _dbSet
                 .Where(predicate)
+                .OrderByDescending(e => EF.Property<int>(e, "Id"))
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();

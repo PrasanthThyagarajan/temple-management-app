@@ -2,6 +2,7 @@ using TempleApi.Domain.Entities;
 using TempleApi.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace TempleApi.Services
 {
@@ -19,113 +20,116 @@ namespace TempleApi.Services
             // Seed Roles
             await SeedRolesAsync();
             
-            // Seed Permissions
-            await SeedPermissionsAsync();
+            // Seed Page Permissions
+            await SeedPagePermissionsAsync();
             
             // Seed Role-Permission mappings
             await SeedRolePermissionsAsync();
             
             // Seed default admin user
             await SeedDefaultAdminAsync();
+
+            // Seed Event Types
+            await SeedEventTypesAsync();
+
+            await SeedDefaultTempleAsync();
         }
 
         private async Task SeedRolesAsync()
         {
-            if (!await _context.Roles.AnyAsync())
-            {
-                var roles = new List<Role>
-                {
-                    new Role
-                    {
-                        RoleName = "Admin",
-                        Description = "System Administrator with full access",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    },
-                    new Role
-                    {
-                        RoleName = "General",
-                        Description = "General user with basic access",
-                        CreatedAt = DateTime.UtcNow,
-                        IsActive = true
-                    }
-                };
+            var existingRoles = await _context.Roles.Select(r => r.RoleName).ToListAsync();
 
-                _context.Roles.AddRange(roles);
+            var rolesToAdd = new List<Role>
+            {
+                new Role
+                {
+                    RoleName = "Admin",
+                    Description = "System Administrator with full access",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                },
+                new Role
+                {
+                    RoleName = "General",
+                    Description = "General user with basic access",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                }
+            };
+
+            var newRoles = rolesToAdd.Where(r => !existingRoles.Contains(r.RoleName)).ToList();
+
+            if (newRoles.Any())
+            {
+                _context.Roles.AddRange(newRoles);
                 await _context.SaveChangesAsync();
             }
         }
 
-        private async Task SeedPermissionsAsync()
+        private async Task SeedPagePermissionsAsync()
         {
-            if (!await _context.Permissions.AnyAsync())
+            if (!await _context.PagePermissions.AnyAsync())
             {
-                var permissions = new List<Permission>
+                var pagePermissions = new List<PagePermission>();
+                
+                // Define pages and their permissions based on router/index.js paths
+                var pages = new[]
                 {
-                    // Admin Console composite permission
-                    new Permission { PermissionName = "UserRoleConfiguration", Description = "Access to user/role/permission admin" },
-                    // User Management
-                    new Permission { PermissionName = "users.view", Description = "View users" },
-                    new Permission { PermissionName = "users.create", Description = "Create users" },
-                    new Permission { PermissionName = "users.edit", Description = "Edit users" },
-                    new Permission { PermissionName = "users.delete", Description = "Delete users" },
+                    // Home and Dashboard
+                    new { Name = "Home", Url = "/" },
+                    new { Name = "Dashboard", Url = "/dashboard" },
                     
-                    // Temple Management
-                    new Permission { PermissionName = "temples.view", Description = "View temples" },
-                    new Permission { PermissionName = "temples.create", Description = "Create temples" },
-                    new Permission { PermissionName = "temples.edit", Description = "Edit temples" },
-                    new Permission { PermissionName = "temples.delete", Description = "Delete temples" },
+                    // Core Temple Management
+                    new { Name = "Areas", Url = "/areas" },
+                    new { Name = "Temples", Url = "/temples" },
+                    new { Name = "Devotees", Url = "/devotees" },
+                    new { Name = "Donations", Url = "/donations" },
+                    new { Name = "Events", Url = "/events" },
+                    new { Name = "Categories", Url = "/categories" },
+                    new { Name = "Products", Url = "/products" },
+                    new { Name = "Sales", Url = "/sales" },
                     
-                    // Devotee Management
-                    new Permission { PermissionName = "devotees.view", Description = "View devotees" },
-                    new Permission { PermissionName = "devotees.create", Description = "Create devotees" },
-                    new Permission { PermissionName = "devotees.edit", Description = "Edit devotees" },
-                    new Permission { PermissionName = "devotees.delete", Description = "Delete devotees" },
+                    // Event Expense Management
+                    new { Name = "EventExpenses", Url = "/event-expenses" },
+                    new { Name = "EventExpenseItems", Url = "/event-expense-items" },
+                    new { Name = "EventExpenseServices", Url = "/event-expense-services" },
+                    new { Name = "Vouchers", Url = "/vouchers" },
                     
-                    // Donation Management
-                    new Permission { PermissionName = "donations.view", Description = "View donations" },
-                    new Permission { PermissionName = "donations.create", Description = "Create donations" },
-                    new Permission { PermissionName = "donations.edit", Description = "Edit donations" },
-                    new Permission { PermissionName = "donations.delete", Description = "Delete donations" },
+                    // Admin & User Management
+                    new { Name = "RolePermissions", Url = "/admin/role-permissions" },
+                    new { Name = "RoleManagement", Url = "/roles" },
+                    new { Name = "UserRoleConfiguration", Url = "/user-roles" },
+                    new { Name = "UserRegistration", Url = "/register" },
+                    new { Name = "AdminUserManagement", Url = "/admin/users" },
                     
-                    // Event Management
-                    new Permission { PermissionName = "events.view", Description = "View events" },
-                    new Permission { PermissionName = "events.create", Description = "Create events" },
-                    new Permission { PermissionName = "events.edit", Description = "Edit events" },
-                    new Permission { PermissionName = "events.delete", Description = "Delete events" },
-                    
-                    // Product Management
-                    new Permission { PermissionName = "products.view", Description = "View products" },
-                    new Permission { PermissionName = "products.create", Description = "Create products" },
-                    new Permission { PermissionName = "products.edit", Description = "Edit products" },
-                    new Permission { PermissionName = "products.delete", Description = "Delete products" },
-                    
-                    // Sale Management
-                    new Permission { PermissionName = "sales.view", Description = "View sales" },
-                    new Permission { PermissionName = "sales.create", Description = "Create sales" },
-                    new Permission { PermissionName = "sales.edit", Description = "Edit sales" },
-                    new Permission { PermissionName = "sales.delete", Description = "Delete sales" },
-                    
-                    // Pooja Management
-                    new Permission { PermissionName = "poojas.view", Description = "View poojas" },
-                    new Permission { PermissionName = "poojas.create", Description = "Create poojas" },
-                    new Permission { PermissionName = "poojas.edit", Description = "Edit poojas" },
-                    new Permission { PermissionName = "poojas.delete", Description = "Delete poojas" },
-                    
-                    // Booking Management
-                    new Permission { PermissionName = "bookings.view", Description = "View bookings" },
-                    new Permission { PermissionName = "bookings.create", Description = "Create bookings" },
-                    new Permission { PermissionName = "bookings.edit", Description = "Edit bookings" },
-                    new Permission { PermissionName = "bookings.delete", Description = "Delete bookings" }
+                    // Additional Routes
+                    new { Name = "Verify", Url = "/verify" },
+                    new { Name = "ApiTest", Url = "/api-test" },
+                    new { Name = "CreateManageEvent", Url = "/create-manage-event" },
+                    new { Name = "AddEvents", Url = "/add-events" }
                 };
-
-                foreach (var permission in permissions)
+                
+                // Create permissions for each page and permission type
+                foreach (var page in pages)
                 {
-                    permission.CreatedAt = DateTime.UtcNow;
-                    permission.IsActive = true;
+                    foreach (var permissionType in Enum.GetValues<TempleApi.Enums.Permission>())
+                    {
+                        pagePermissions.Add(new PagePermission
+                        {
+                            PageName = page.Name,
+                            PageUrl = page.Url,
+                            PermissionId = (int)permissionType
+                        });
+                    }
                 }
 
-                _context.Permissions.AddRange(permissions);
+                foreach (var pagePermission in pagePermissions)
+                {
+                    pagePermission.CreatedAt = DateTime.UtcNow;
+                    pagePermission.IsActive = true;
+                }
+
+                _context.PagePermissions.AddRange(pagePermissions);
                 await _context.SaveChangesAsync();
             }
         }
@@ -137,35 +141,71 @@ namespace TempleApi.Services
                 var adminRole = await _context.Roles.FirstAsync(r => r.RoleName == "Admin");
                 var generalRole = await _context.Roles.FirstAsync(r => r.RoleName == "General");
 
-                var allPermissions = await _context.Permissions.ToListAsync();
-
+                var allPagePermissions = await _context.PagePermissions.ToListAsync();
                 var rolePermissions = new List<RolePermission>();
 
-                // Admin gets all permissions
-                foreach (var permission in allPermissions)
+                // Admin gets ALL permissions for ALL pages
+                foreach (var pagePermission in allPagePermissions)
                 {
                     rolePermissions.Add(new RolePermission
                     {
                         RoleId = adminRole.RoleId,
-                        PermissionId = permission.PermissionId,
+                        PagePermissionId = pagePermission.PagePermissionId,
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     });
                 }
 
-                // General gets basic view permissions and create for bookings/donations
-                var generalPermissions = allPermissions.Where(p => 
-                    p.PermissionName.Contains("view") ||
-                    p.PermissionName.StartsWith("bookings.create") ||
-                    p.PermissionName.StartsWith("donations.create")
+                // General gets specific permissions for specific pages
+                // Read permissions for basic pages
+                var generalReadPermissions = allPagePermissions.Where(p => 
+                    p.PermissionId == (int)TempleApi.Enums.Permission.Read && (
+                        p.PageName == "Home" ||
+                        p.PageName == "Dashboard" ||
+                        p.PageName == "Devotees" ||
+                        p.PageName == "Donations" ||
+                        p.PageName == "Events" ||
+                        p.PageName == "Temples" ||
+                        p.PageName == "Areas" ||
+                        p.PageName == "Categories" ||
+                        p.PageName == "Products" ||
+                        p.PageName == "Sales" ||
+                        p.PageName == "EventExpenses" ||
+                        p.PageName == "EventExpenseItems" ||
+                        p.PageName == "EventExpenseServices"
+                    )
                 ).ToList();
 
-                foreach (var permission in generalPermissions)
+                // Create permissions for donations and basic temple management
+                var generalCreatePermissions = allPagePermissions.Where(p => 
+                    p.PermissionId == (int)TempleApi.Enums.Permission.Create && (
+                        p.PageName == "Donations" ||
+                        p.PageName == "Devotees" ||
+                        p.PageName == "EventExpenses" ||
+                        p.PageName == "EventExpenseItems"
+                    )
+                ).ToList();
+
+                // Update permissions for donations and expenses (general users can update their own records)
+                var generalUpdatePermissions = allPagePermissions.Where(p => 
+                    p.PermissionId == (int)TempleApi.Enums.Permission.Update && (
+                        p.PageName == "Donations" ||
+                        p.PageName == "EventExpenses" ||
+                        p.PageName == "EventExpenseItems"
+                    )
+                ).ToList();
+
+                // Add all general permissions
+                var generalPermissions = generalReadPermissions
+                    .Concat(generalCreatePermissions)
+                    .Concat(generalUpdatePermissions);
+
+                foreach (var pagePermission in generalPermissions)
                 {
                     rolePermissions.Add(new RolePermission
                     {
                         RoleId = generalRole.RoleId,
-                        PermissionId = permission.PermissionId,
+                        PagePermissionId = pagePermission.PagePermissionId,
                         CreatedAt = DateTime.UtcNow,
                         IsActive = true
                     });
@@ -182,8 +222,8 @@ namespace TempleApi.Services
             {
                 var adminRole = await _context.Roles.FirstAsync(r => r.RoleName == "Admin");
                 
-                // Hash password for "admin123" using PBKDF2 to match AuthService verification
-                var passwordHash = HashPassword("admin123");
+                // Store password as Base64 per BasicAuth requirement
+                var passwordHash = Convert.ToBase64String(Encoding.UTF8.GetBytes("admin123"));
                 
                 var adminUser = new User
                 {
@@ -192,6 +232,7 @@ namespace TempleApi.Services
                     FullName = "System Administrator",
                     PasswordHash = passwordHash,
                     IsActive = true,
+                    IsVerified = true,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -210,22 +251,146 @@ namespace TempleApi.Services
                 _context.UserRoles.Add(userRole);
                 await _context.SaveChangesAsync();
             }
+            else
+            {
+                // Ensure existing admin has Base64 password and is active
+                var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == "admin");
+                if (adminUser != null)
+                {
+                    var expected = Convert.ToBase64String(Encoding.UTF8.GetBytes("admin123"));
+                    var changed = false;
+                    try
+                    {
+                        var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(adminUser.PasswordHash));
+                        if (!string.Equals(decoded, "admin123"))
+                        {
+                            adminUser.PasswordHash = expected;
+                            changed = true;
+                        }
+                    }
+                    catch
+                    {
+                        adminUser.PasswordHash = expected;
+                        changed = true;
+                    }
+
+                    if (!adminUser.IsActive)
+                    {
+                        adminUser.IsActive = true;
+                        changed = true;
+                    }
+
+                    if (!adminUser.IsVerified)
+                    {
+                        adminUser.IsVerified = true;
+                        changed = true;
+                    }
+
+                    if (changed)
+                    {
+                        _context.Users.Update(adminUser);
+                        await _context.SaveChangesAsync();
+                    }
+                }
+            }
+        }
+
+        private async Task SeedDefaultAreasAsync(int templeId)
+        {
+            var existingAreas = await _context.Areas.Where(a => a.TempleId == templeId).Select(a => a.Name).ToListAsync();
+
+            var defaultAreas = new[]
+            {
+                "Sree Kovil",
+                "Maadan Kovil",
+                "Ganpathi Madapam",
+                "Sarpakaavu",
+                "Auditorium",
+                "Guest House",
+                "Rental Area A",
+                "Rental Area B"
+            };
+
+            var areasToAdd = defaultAreas.Where(areaName => !existingAreas.Contains(areaName)).ToList();
+
+            foreach (var areaName in areasToAdd)
+            {
+                _context.Areas.Add(new Area
+                {
+                    TempleId = templeId,
+                    Name = areaName,
+                    Description = string.Empty,
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                });
+            }
+
+            if (areasToAdd.Any())
+            {
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        private async Task SeedEventTypesAsync()
+        {
+            if (!await _context.EventTypes.AnyAsync())
+            {
+                var types = new List<EventType>
+                {
+                    new EventType { Name = "Daily Ritual", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Monthly Ritual", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Annual Festival", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Season Festival", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Kumba Abhishekam", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Special Pooja", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Auditorium Events", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new EventType { Name = "Monthly Rental", IsActive = true, CreatedAt = DateTime.UtcNow }
+                };
+
+                _context.EventTypes.AddRange(types);
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        private async Task SeedDefaultTempleAsync()
+        {
+            var existingTemple = await _context.Temples.FirstOrDefaultAsync(t => t.Name == "Pallipuram Pariyathara shri Mutharamman Temple");
+            if (existingTemple == null)
+            {
+                var newTemple = new Temple
+                {
+                    Name = "Pallipuram Pariyathara shri Mutharamman Temple",
+                    City = "Thiruvananthapuram",
+                    State = "Kerala",
+                    Address = "Vetturod, Kaniyapuram",
+                    EstablishedDate = new DateTime(1900, 1, 1),
+                    Deity = "Mutharamman Devi",
+                    Description = "Pallipuram Pariyathara shri Mutharamman Temple",
+                    CreatedAt = DateTime.UtcNow,
+                    IsActive = true
+                };
+
+                _context.Temples.Add(newTemple);
+                await _context.SaveChangesAsync();
+
+                // Seed default areas for the new temple
+                await SeedDefaultAreasAsync(newTemple.Id);
+            }
+            else
+            {
+                // Ensure default areas exist for the existing temple
+                var hasAreas = await _context.Areas.AnyAsync(a => a.TempleId == existingTemple.Id);
+                if (!hasAreas)
+                {
+                    await SeedDefaultAreasAsync(existingTemple.Id);
+                }
+            }
         }
 
         private string HashPassword(string password)
         {
-            using var rng = RandomNumberGenerator.Create();
-            var saltBytes = new byte[32];
-            rng.GetBytes(saltBytes);
-
-            using var pbkdf2 = new Rfc2898DeriveBytes(password, saltBytes, 10000, HashAlgorithmName.SHA256);
-            var hashBytes = pbkdf2.GetBytes(32);
-
-            var hashWithSalt = new byte[64];
-            Array.Copy(saltBytes, 0, hashWithSalt, 0, 32);
-            Array.Copy(hashBytes, 0, hashWithSalt, 32, 32);
-
-            return Convert.ToBase64String(hashWithSalt);
+            // Not used anymore; keep for compatibility if needed
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(password));
         }
     }
 }

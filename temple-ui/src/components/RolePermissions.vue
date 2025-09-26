@@ -12,13 +12,13 @@
       </div>
     </div>
 
-    <el-table v-if="pages.length" :data="pageRows" v-loading="loading" border style="width: 100%" class="perm-table">
+    <el-table v-if="pageRows.length" :data="pageRows" v-loading="loading" border style="width: 100%" class="perm-table">
       <el-table-column type="index" label="Sl No" width="80" />
       <el-table-column prop="name" label="Page" min-width="200" />
       <el-table-column label="Actions" min-width="260">
         <template #default="scope">
-          <el-select v-model="scope.row.actions" multiple placeholder="Select actions" @change="onActionsChange(scope.row)" :disabled="isAdminSelected">
-            <el-option v-for="opt in actionOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+          <el-select v-model="scope.row.selected" multiple placeholder="Select actions" @change="onActionsChange(scope.row)" :disabled="isAdminSelected">
+            <el-option v-for="opt in scope.row.options" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </template>
       </el-table-column>
@@ -37,16 +37,9 @@ export default {
       saving: false,
       roles: [],
       permissions: [],
-      pages: [],
       pageRows: [],
       selectedRoleId: null,
-      selectedPermissionIds: [],
-      actionOptions: [
-        { label: 'View', value: 'view' },
-        { label: 'Create', value: 'create' },
-        { label: 'Edit', value: 'edit' },
-        { label: 'Delete', value: 'delete' }
-      ],
+      selectedPagePermissionIds: [],
       isAdminSelected: false,
     }
   },
@@ -54,14 +47,12 @@ export default {
     async loadData() {
       this.loading = true
       try {
-        const [rolesRes, permsRes, pagesRes] = await Promise.all([
+        const [rolesRes, permsRes] = await Promise.all([
           axios.get('/api/roles'),
-          axios.get('/api/permissions'),
-          axios.get('/api/config/pages')
+          axios.get('/api/permissions')
         ])
         this.roles = rolesRes.data
         this.permissions = permsRes.data
-        this.pages = pagesRes.data
         if (this.roles.length && !this.selectedRoleId) {
           this.selectedRoleId = this.roles[0].roleId
           await this.loadRolePermissions()
@@ -77,7 +68,7 @@ export default {
       this.loading = true
       try {
         const { data } = await axios.get(`/api/roles/${this.selectedRoleId}/permissions`)
-        this.selectedPermissionIds = data.permissionIds || []
+        this.selectedPagePermissionIds = data.pagePermissionIds || []
         this.buildPageRows()
         const selectedRole = this.roles.find(r => r.roleId === this.selectedRoleId)
         this.isAdminSelected = !!selectedRole && String(selectedRole.roleName).toLowerCase() === 'admin'
@@ -88,44 +79,43 @@ export default {
       }
     },
     buildPageRows() {
-      const permByKey = {}
-      for (const p of this.permissions) {
-        const parts = (p.permissionName || '').split('.')
-        if (parts.length !== 2) continue
-        const [pageKey, action] = parts
-        if (!permByKey[pageKey]) permByKey[pageKey] = {}
-        permByKey[pageKey][action] = p.permissionId
-      }
-      this.pageRows = this.pages.map((pg) => {
-        const key = pg.key
-        const mapping = permByKey[key] || {}
-        const actions = []
-        for (const a of ['view','create','edit','delete']) {
-          const pid = mapping[a]
-          if (pid && this.selectedPermissionIds.includes(pid)) actions.push(a)
+      const permissionLabel = (pid) => {
+        switch (pid) {
+          case 1: return 'Read'
+          case 2: return 'Create'
+          case 3: return 'Update'
+          case 4: return 'Delete'
+          default: return `Permission ${pid}`
         }
-        return { key, name: pg.name, actions }
-      })
+      }
+      const byPage = {}
+      for (const p of this.permissions) {
+        const key = p.pageUrl || p.pageName
+        if (!byPage[key]) {
+          byPage[key] = { key, name: p.pageName || key, options: [] }
+        }
+        byPage[key].options.push({
+          label: permissionLabel(p.permissionId),
+          value: p.pagePermissionId
+        })
+      }
+      const rows = Object.values(byPage)
+      for (const row of rows) {
+        row.selected = row.options
+          .map(o => o.value)
+          .filter(v => this.selectedPagePermissionIds.includes(v))
+      }
+      // Sort by page name for stable UI
+      rows.sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      this.pageRows = rows
     },
     onActionsChange(row) {
-      const permByKey = {}
-      for (const p of this.permissions) {
-        const parts = (p.permissionName || '').split('.')
-        if (parts.length !== 2) continue
-        const [pageKey, action] = parts
-        if (!permByKey[pageKey]) permByKey[pageKey] = {}
-        permByKey[pageKey][action] = p.permissionId
+      // Recompute the union of all selected page-permission IDs
+      const all = []
+      for (const r of this.pageRows) {
+        if (Array.isArray(r.selected)) all.push(...r.selected)
       }
-      const ids = new Set(this.selectedPermissionIds)
-      for (const a of ['view','create','edit','delete']) {
-        const pid = permByKey[row.key]?.[a]
-        if (pid) ids.delete(pid)
-      }
-      for (const a of row.actions) {
-        const pid = permByKey[row.key]?.[a]
-        if (pid) ids.add(pid)
-      }
-      this.selectedPermissionIds = Array.from(ids)
+      this.selectedPagePermissionIds = Array.from(new Set(all))
     },
     async save() {
       if (!this.selectedRoleId) return
@@ -133,7 +123,7 @@ export default {
       try {
         await axios.post(`/api/roles/${this.selectedRoleId}/permissions`, {
           roleId: this.selectedRoleId,
-          permissionIds: this.selectedPermissionIds
+          pagePermissionIds: this.selectedPagePermissionIds
         })
         ElMessage.success('Permissions updated')
       } catch (e) {

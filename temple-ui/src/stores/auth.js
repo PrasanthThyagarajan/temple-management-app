@@ -1,115 +1,132 @@
 import { ref, computed } from 'vue'
-import axios from 'axios'
+
+// Authentication is now handled in main.js
+// This store acts as a Vue-reactive bridge to the global auth functions
 
 const user = ref(null)
-const token = ref(localStorage.getItem('token'))
+const token = ref(null)
 const permissions = ref([])
 
-// Set up axios interceptor for authentication
-if (token.value) {
-  axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
+// Initialize from global auth state
+const initializeFromGlobal = () => {
+  if (window.templeAuth) {
+    user.value = window.templeAuth.getCurrentUser()
+    token.value = window.templeAuth.getCurrentToken()
+    permissions.value = window.templeAuth.getCurrentPermissions()
+  }
+}
+
+// Auto-update when storage changes (for multi-tab sync)
+const updateFromGlobal = () => {
+  initializeFromGlobal()
+}
+
+// Listen for storage changes
+window.addEventListener('storage', updateFromGlobal)
+
+// Initialize immediately if global auth is available
+if (typeof window !== 'undefined') {
+  // Use a timeout to ensure main.js has initialized
+  setTimeout(initializeFromGlobal, 100)
 }
 
 export const useAuth = () => {
-  const isAuthenticated = computed(() => !!user.value && !!token.value)
+  // Computed properties
+  const isAuthenticated = computed(() => {
+    if (window.templeAuth) {
+      return !!(window.templeAuth.getCurrentUser() && window.templeAuth.getCurrentToken())
+    }
+    return !!(user.value && token.value)
+  })
   
+  // Auth functions that delegate to global auth
   const hasRole = (roleName) => {
-    if (!user.value || !user.value.roles) return false
-    return user.value.roles.includes(roleName)
+    if (window.templeAuth) {
+      return window.templeAuth.hasRole(roleName)
+    }
+    return user.value?.roles?.includes(roleName) || false
   }
   
   const hasPermission = (permissionName) => {
-    if (!permissions.value || permissions.value.length === 0) return false
-    return permissions.value.includes(permissionName)
+    if (window.templeAuth) {
+      return window.templeAuth.hasPermission(permissionName)
+    }
+    return permissions.value?.includes(permissionName) || false
+  }
+  
+  const hasPageReadPermission = async (pageUrl) => {
+    if (window.templeAuth) {
+      return window.templeAuth.hasPageReadPermission(pageUrl)
+    }
+    return false
   }
   
   const login = async (username, password) => {
-    try {
-      const response = await axios.post('/api/auth/login', {
-        username,
-        password
-      })
-      
-      if (response.data.success) {
-        token.value = response.data.token
-        user.value = response.data.user
-        permissions.value = response.data.permissions || []
-        
-        localStorage.setItem('token', token.value)
-        localStorage.setItem('user', JSON.stringify(user.value))
-        localStorage.setItem('permissions', JSON.stringify(permissions.value))
-        
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-        
-        return { success: true, user: user.value }
-      } else {
-        return { success: false, message: response.data.message }
-      }
-    } catch (error) {
-      console.error('Login error:', error)
-      return { success: false, message: 'Login failed. Please try again.' }
+    if (window.templeAuth) {
+      const result = await window.templeAuth.login(username, password)
+      // Update reactive refs after login
+      updateFromGlobal()
+      return result
+    }
+    return { success: false, message: 'Authentication system not available' }
+  }
+  
+  const logout = (redirectToLogin = true) => {
+    if (window.templeAuth) {
+      window.templeAuth.logout(redirectToLogin)
+      // Update reactive refs after logout
+      updateFromGlobal()
     }
   }
   
-  const register = async (name, email, password) => {
-    try {
-      const response = await axios.post('/api/auth/register', {
-        name,
-        email,
-        password
-      })
-      
-      if (response.data.success) {
-        return { success: true, message: 'Registration successful! Please login.' }
-      } else {
-        return { success: false, message: response.data.message }
-      }
-    } catch (error) {
-      console.error('Registration error:', error)
-      return { success: false, message: 'Registration failed. Please try again.' }
+  const register = async (fullName, email, password, nakshatra, dateOfBirth, gender) => {
+    if (window.templeAuth) {
+      const result = await window.templeAuth.register(fullName, email, password, nakshatra, dateOfBirth, gender)
+      return result
     }
-  }
-  
-  const logout = () => {
-    user.value = null
-    token.value = null
-    permissions.value = []
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('permissions')
-    delete axios.defaults.headers.common['Authorization']
+    return { success: false, message: 'Authentication system not available' }
   }
   
   const loadUser = () => {
-    const storedUser = localStorage.getItem('user')
-    const storedToken = localStorage.getItem('token')
-    
-    const storedPerms = localStorage.getItem('permissions')
-    if (storedUser && storedToken) {
-      try {
-        user.value = JSON.parse(storedUser)
-        token.value = storedToken
-        permissions.value = storedPerms ? JSON.parse(storedPerms) : []
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-      } catch (error) {
-        console.error('Error loading user data:', error)
-        logout()
-      }
-    }
+    // This is now handled automatically by main.js
+    updateFromGlobal()
   }
   
-  // Load user on module initialization
-  loadUser()
+  // Keep reactive refs updated
+  const refreshAuthState = () => {
+    updateFromGlobal()
+  }
   
   return {
-    user: computed(() => user.value),
-    token: computed(() => token.value),
+    user: computed(() => {
+      // Always get fresh data from global auth
+      if (window.templeAuth) {
+        return window.templeAuth.getCurrentUser()
+      }
+      return user.value
+    }),
+    token: computed(() => {
+      // Always get fresh data from global auth
+      if (window.templeAuth) {
+        return window.templeAuth.getCurrentToken()
+      }
+      return token.value
+    }),
+    permissions: computed(() => {
+      // Always get fresh data from global auth
+      if (window.templeAuth) {
+        return window.templeAuth.getCurrentPermissions()
+      }
+      return permissions.value
+    }),
     isAuthenticated,
     hasRole,
     hasPermission,
+    hasPageReadPermission,
     login,
-    register,
     logout,
-    loadUser
+    register,
+    loadUser,
+    refreshAuthState
   }
 }

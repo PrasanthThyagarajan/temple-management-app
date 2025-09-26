@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace TempleApi.Domain.Entities
 {
@@ -40,5 +41,7 @@ namespace TempleApi.Domain.Entities
         public virtual ICollection<Donation> Donations { get; set; } = new List<Donation>();
         public virtual ICollection<Event> Events { get; set; } = new List<Event>();
         public virtual ICollection<Service> Services { get; set; } = new List<Service>();
+        [JsonIgnore]
+        public virtual ICollection<Area> Areas { get; set; } = new List<Area>();
     }
 }

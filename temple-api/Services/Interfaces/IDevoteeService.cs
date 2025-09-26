@@ -9,6 +9,7 @@ namespace TempleApi.Services.Interfaces
         Task<Devotee?> GetDevoteeByIdAsync(int id);
         Task<IEnumerable<Devotee>> GetDevoteesByTempleAsync(int templeId);
         Task<Devotee> CreateDevoteeAsync(CreateDevoteeDto createDto);
+        Task<(Devotee Devotee, string? GeneratedPassword)> CreateDevoteeWithUserAsync(CreateDevoteeDto createDto);
         Task<Devotee?> UpdateDevoteeAsync(int id, CreateDevoteeDto updateDto);
         Task<bool> DeleteDevoteeAsync(int id);
         Task<IEnumerable<Devotee>> SearchDevoteesAsync(string searchTerm);

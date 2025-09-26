@@ -29,7 +29,7 @@ namespace TempleApi.Tests
 		public async Task CreateDonationAsync_ShouldCreateDonation_WithDevotee()
 		{
 			var temple = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
-			var devotee = new Devotee { FirstName = "John", LastName = "Doe", TempleId = 0, IsActive = true };
+            var devotee = new Devotee { FullName = "John Doe", TempleId = 0, IsActive = true };
 			_context.Temples.Add(temple);
 			await _context.SaveChangesAsync();
 			devotee.TempleId = temple.Id;
@@ -143,8 +143,8 @@ namespace TempleApi.Tests
 			var t = new Temple { Name = "T", Address = "A", City = "C", State = "S", IsActive = true };
 			_context.Temples.Add(t);
 			await _context.SaveChangesAsync();
-			var d1 = new Devotee { FirstName = "A", LastName = "A", TempleId = t.Id, IsActive = true };
-			var d2 = new Devotee { FirstName = "B", LastName = "B", TempleId = t.Id, IsActive = true };
+            var d1 = new Devotee { FullName = "A A", TempleId = t.Id, IsActive = true };
+            var d2 = new Devotee { FullName = "B B", TempleId = t.Id, IsActive = true };
 			_context.Devotees.AddRange(d1, d2);
 			await _context.SaveChangesAsync();
 			_context.Donations.AddRange(

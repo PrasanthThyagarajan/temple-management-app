@@ -6,12 +6,6 @@ using TempleApi.Models.DTOs;
 using TempleApi.Services;
 using Xunit;
 using System.Threading.Tasks;
-using Xunit;
-using Moq;
-using TempleApi.Services;
-using TempleApi.Repositories.Interfaces;
-using TempleApi.Domain.Entities;
-using TempleApi.Models.DTOs;
 using System;
 
 namespace TempleApi.Tests
@@ -41,7 +35,12 @@ namespace TempleApi.Tests
             {
                 Name = "John Doe",
                 Email = "john@example.com",
-                Password = "password123"
+                Gender = "Male",
+                PhoneNumber = "5551234567",
+                Address = "123 Sample Street",
+                Password = "password123",
+                Nakshatra = "Ashwini",
+                DateOfBirth = new DateTime(1990, 5, 15, 10, 30, 0)
             };
 
             // Act
@@ -51,7 +50,13 @@ namespace TempleApi.Tests
             Assert.NotNull(result);
             Assert.Equal(createUserDto.Name, result.FullName);
             Assert.Equal(createUserDto.Email, result.Email);
+            Assert.Equal(createUserDto.Gender, result.Gender);
+            Assert.Equal(createUserDto.PhoneNumber, result.PhoneNumber);
+            Assert.Equal(createUserDto.Address, result.Address);
+            Assert.Equal(createUserDto.Nakshatra, result.Nakshatra);
+            Assert.Equal(createUserDto.DateOfBirth, result.DateOfBirth);
             Assert.True(result.UserId > 0);
+            Assert.True(result.IsActive); // Admin-created users are active
         }
 
         [Fact]
@@ -65,7 +70,8 @@ namespace TempleApi.Tests
                 FullName = "Existing User",
                 PasswordHash = "hashedpassword",
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                IsVerified = true
             };
 
             _context.Users.Add(existingUser);
@@ -334,6 +340,45 @@ namespace TempleApi.Tests
 
             // Assert
             Assert.False(result);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_ShouldGenerateNewPassword_AndAllowLogin()
+        {
+            // Arrange
+            var user = new User
+            {
+                Username = "resetuser",
+                Email = "reset@example.com",
+                FullName = "Reset User",
+                PasswordHash = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("oldpass1")),
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true,
+                IsVerified = true
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Act
+            var newPassword = await _userService.ResetPasswordAsync(user.UserId);
+
+            // Assert
+            Assert.False(string.IsNullOrWhiteSpace(newPassword));
+            Assert.True(newPassword.Length >= 8);
+
+            var updated = await _context.Users.FindAsync(user.UserId);
+            Assert.NotNull(updated);
+            Assert.NotEqual(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("oldpass1")), updated!.PasswordHash);
+
+            // New password should validate
+            var ok = await _userService.ValidateUserCredentialsAsync(user.Email, newPassword);
+            Assert.True(ok);
+        }
+
+        [Fact]
+        public async Task ResetPasswordAsync_ShouldThrow_WhenUserNotFound()
+        {
+            await Assert.ThrowsAsync<KeyNotFoundException>(() => _userService.ResetPasswordAsync(99999));
         }
 
         public void Dispose()

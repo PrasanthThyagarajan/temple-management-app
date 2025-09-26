@@ -111,11 +111,11 @@ namespace TempleApi.Tests
 
             // Assert
             result.Should().NotBeNull();
-            result.Name.Should().Be(product.Name);
-            result.Category.Should().Be(product.Category);
-            result.StockQuantity.Should().Be(product.Quantity);
-            result.Price.Should().Be(product.Price);
-            result.Status.Should().Be("Active");
+            result!.Name.Should().Be(product.Name);
+            result!.Category.Should().Be(product.Category);
+            result!.StockQuantity.Should().Be(product.Quantity);
+            result!.Price.Should().Be(product.Price);
+            result!.Status.Should().Be("Active");
         }
 
         [Fact]
@@ -292,7 +292,8 @@ namespace TempleApi.Tests
             // Assert
             result.Should().BeTrue();
             var updatedProduct = await _productService.GetProductByIdAsync(product.Id);
-            updatedProduct!.Quantity.Should().Be(75);
+            updatedProduct.Should().NotBeNull();
+            updatedProduct?.Quantity.Should().Be(75);
         }
 
         [Fact]
@@ -326,7 +327,8 @@ namespace TempleApi.Tests
             // Assert
             result.Should().BeTrue();
             var updatedProduct = await _productService.GetProductByIdAsync(product.Id);
-            updatedProduct!.Status.Should().Be("Inactive");
+            updatedProduct.Should().NotBeNull();
+            updatedProduct?.Status.Should().Be("Inactive");
         }
 
         [Fact]
