@@ -31,9 +31,18 @@ namespace TempleApi.Services
 
 		public async Task<UserRole> UpdateUserRoleAsync(UserRole userRole)
 		{
-			_db.UserRoles.Update(userRole);
+			// Load existing tracked entity to avoid duplicate tracking conflicts
+			var existing = await _db.UserRoles
+				.FirstOrDefaultAsync(ur => ur.UserRoleId == userRole.UserRoleId);
+			if (existing == null)
+			{
+				throw new KeyNotFoundException($"UserRole {userRole.UserRoleId} not found");
+			}
+
+			// Copy incoming values onto the tracked instance
+			_db.Entry(existing).CurrentValues.SetValues(userRole);
 			await _db.SaveChangesAsync();
-			return userRole;
+			return existing;
 		}
 
 		public async Task<bool> DeleteUserRoleAsync(int userRoleId)

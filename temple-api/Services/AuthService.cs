@@ -130,12 +130,13 @@ namespace TempleApi.Services
                     }
                 }
 
-                // Check duplicates
-                if (await _context.Users.AnyAsync(u => u.Username == username))
+                // Check duplicates (handle case-insensitive for In-Memory database in tests)
+                var existingUsers = await _context.Users.ToListAsync();
+                if (existingUsers.Any(u => string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)))
                 {
                     return new AuthResponse { Success = false, Message = "Username already exists" };
                 }
-                if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+                if (existingUsers.Any(u => string.Equals(u.Email, request.Email, StringComparison.OrdinalIgnoreCase)))
                 {
                     return new AuthResponse { Success = false, Message = "Email already exists" };
                 }

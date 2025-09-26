@@ -66,13 +66,14 @@ namespace TempleApi.Tests
                 PasswordHash = Convert.ToBase64String(Encoding.UTF8.GetBytes("password123")),
                 IsActive = true,
                 IsVerified = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             db.Users.Add(user);
 
             // Add roles
-            var adminRole = new Role { RoleName = "Admin", IsActive = true, CreatedAt = DateTime.UtcNow };
-            var generalRole = new Role { RoleName = "General", IsActive = true, CreatedAt = DateTime.UtcNow };
+            var adminRole = new Role { RoleName = "Admin", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
+            var generalRole = new Role { RoleName = "General", IsActive = true, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow };
             db.Roles.AddRange(adminRole, generalRole);
             db.SaveChanges();
 
@@ -82,7 +83,8 @@ namespace TempleApi.Tests
                 UserId = user.UserId,
                 RoleId = adminRole.RoleId,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             db.UserRoles.Add(userRole);
 
@@ -91,8 +93,10 @@ namespace TempleApi.Tests
             { 
                 PageName = "UserManagement", 
                 PageUrl = "/users", 
+                PermissionId = (int)TempleApi.Enums.Permission.Read,
                 IsActive = true,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
             db.PagePermissions.Add(permission);
 
@@ -101,7 +105,9 @@ namespace TempleApi.Tests
             {
                 RoleId = adminRole.RoleId,
                 PagePermissionId = permission.PagePermissionId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                IsActive = true
             };
             db.RolePermissions.Add(rolePermission);
             db.SaveChanges();
@@ -319,7 +325,8 @@ namespace TempleApi.Tests
                     IsActive = false,
                     IsVerified = false,
                     VerificationCode = "test-verification-code",
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
                 };
                 db.Users.Add(unverifiedUser);
                 db.SaveChanges();

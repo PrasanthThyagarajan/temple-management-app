@@ -28,42 +28,11 @@ if (currentBasic) {
   axios.defaults.headers.common['Authorization'] = `Basic ${currentBasic}`
 }
 
-// Public GET endpoints that should not send Authorization
-const publicGetPaths = new Set([
-  '/api/events',
-  '/api/areas', 
-  '/api/event-types',
-  '/api/products',
-  '/api/sales',
-  '/api/devotees',
-  '/api/donations',
-  '/api/temples',
-  '/api/categories',
-  '/api/horoscope/daily',
-  '/api/horoscope/weekly',
-  '/api/horoscope/monthly',
-  '/api/panchang',
-  '/health'
-])
-
 // Axios request interceptor
 axios.interceptors.request.use(
   (config) => {
     try {
-      const isGet = (config.method || 'get').toLowerCase() === 'get'
-      const url = config.url || ''
-      
-      // Remove Authorization for public GET endpoints
-      if (isGet) {
-        for (const path of publicGetPaths) {
-          if (url === path || url.startsWith(`${path}`) || url.startsWith(`${path}/`)) {
-            if (config.headers && 'Authorization' in config.headers) {
-              delete config.headers['Authorization']
-            }
-            break
-          }
-        }
-      }
+      // Always send Authorization when present; do not strip for GETs
     } catch (_) { /* ignore */ }
     return config
   },

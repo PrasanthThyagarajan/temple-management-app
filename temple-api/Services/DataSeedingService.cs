@@ -68,150 +68,185 @@ namespace TempleApi.Services
 
         private async Task SeedPagePermissionsAsync()
         {
-            if (!await _context.PagePermissions.AnyAsync())
+            var pagePermissionsToInsert = new List<PagePermission>();
+
+            // Define pages and their permissions based on router/index.js paths
+            var pages = new[]
             {
-                var pagePermissions = new List<PagePermission>();
-                
-                // Define pages and their permissions based on router/index.js paths
-                var pages = new[]
+                // Home and Dashboard
+                new { Name = "Home", Url = "/" },
+                new { Name = "Dashboard", Url = "/dashboard" },
+
+                // Core Temple Management
+                new { Name = "Areas", Url = "/areas" },
+                new { Name = "Temples", Url = "/temples" },
+                new { Name = "Devotees", Url = "/devotees" },
+                new { Name = "Donations", Url = "/donations" },
+                new { Name = "Events", Url = "/events" },
+                new { Name = "Categories", Url = "/categories" },
+                new { Name = "Products", Url = "/products" },
+                new { Name = "Sales", Url = "/sales" },
+
+                // Event Expense Management
+                new { Name = "EventExpenses", Url = "/event-expenses" },
+                new { Name = "EventExpenseItems", Url = "/event-expense-items" },
+                new { Name = "EventExpenseServices", Url = "/event-expense-services" },
+                new { Name = "Vouchers", Url = "/vouchers" },
+
+                // Admin & User Management
+                new { Name = "RolePermissions", Url = "/admin/role-permissions" },
+                new { Name = "RoleManagement", Url = "/roles" },
+                new { Name = "UserRoleConfiguration", Url = "/user-roles" },
+                new { Name = "UserRegistration", Url = "/register" },
+                new { Name = "AdminUserManagement", Url = "/admin/users" },
+
+                // Additional Routes
+                new { Name = "Verify", Url = "/verify" },
+                new { Name = "ApiTest", Url = "/api-test" }
+            };
+
+            var desiredUrls = pages.Select(p => p.Url).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existing = await _context.PagePermissions.ToListAsync();
+            var now = DateTime.UtcNow;
+            var madeChanges = false;
+
+            // Ensure each desired page has all four permissions
+            foreach (var page in pages)
+            {
+                foreach (var permissionType in Enum.GetValues<TempleApi.Enums.Permission>())
                 {
-                    // Home and Dashboard
-                    new { Name = "Home", Url = "/" },
-                    new { Name = "Dashboard", Url = "/dashboard" },
-                    
-                    // Core Temple Management
-                    new { Name = "Areas", Url = "/areas" },
-                    new { Name = "Temples", Url = "/temples" },
-                    new { Name = "Devotees", Url = "/devotees" },
-                    new { Name = "Donations", Url = "/donations" },
-                    new { Name = "Events", Url = "/events" },
-                    new { Name = "Categories", Url = "/categories" },
-                    new { Name = "Products", Url = "/products" },
-                    new { Name = "Sales", Url = "/sales" },
-                    
-                    // Event Expense Management
-                    new { Name = "EventExpenses", Url = "/event-expenses" },
-                    new { Name = "EventExpenseItems", Url = "/event-expense-items" },
-                    new { Name = "EventExpenseServices", Url = "/event-expense-services" },
-                    new { Name = "Vouchers", Url = "/vouchers" },
-                    
-                    // Admin & User Management
-                    new { Name = "RolePermissions", Url = "/admin/role-permissions" },
-                    new { Name = "RoleManagement", Url = "/roles" },
-                    new { Name = "UserRoleConfiguration", Url = "/user-roles" },
-                    new { Name = "UserRegistration", Url = "/register" },
-                    new { Name = "AdminUserManagement", Url = "/admin/users" },
-                    
-                    // Additional Routes
-                    new { Name = "Verify", Url = "/verify" },
-                    new { Name = "ApiTest", Url = "/api-test" },
-                    new { Name = "CreateManageEvent", Url = "/create-manage-event" },
-                    new { Name = "AddEvents", Url = "/add-events" }
-                };
-                
-                // Create permissions for each page and permission type
-                foreach (var page in pages)
-                {
-                    foreach (var permissionType in Enum.GetValues<TempleApi.Enums.Permission>())
+                    var match = existing.FirstOrDefault(pp =>
+                        pp.PageUrl.Equals(page.Url, StringComparison.OrdinalIgnoreCase) &&
+                        pp.PermissionId == (int)permissionType);
+
+                    if (match == null)
                     {
-                        pagePermissions.Add(new PagePermission
+                        pagePermissionsToInsert.Add(new PagePermission
                         {
                             PageName = page.Name,
                             PageUrl = page.Url,
-                            PermissionId = (int)permissionType
+                            PermissionId = (int)permissionType,
+                            CreatedAt = now,
+                            IsActive = true
                         });
+                        madeChanges = true;
+                    }
+                    else
+                    {
+                        // Keep name in sync and ensure active
+                        if (!string.Equals(match.PageName, page.Name, StringComparison.Ordinal))
+                        {
+                            match.PageName = page.Name;
+                            madeChanges = true;
+                        }
+                        if (!match.IsActive)
+                        {
+                            match.IsActive = true;
+                            madeChanges = true;
+                        }
                     }
                 }
+            }
 
-                foreach (var pagePermission in pagePermissions)
+            // Deactivate obsolete page permissions not in desired set
+            foreach (var pp in existing)
+            {
+                if (!desiredUrls.Contains(pp.PageUrl) && pp.IsActive)
                 {
-                    pagePermission.CreatedAt = DateTime.UtcNow;
-                    pagePermission.IsActive = true;
+                    pp.IsActive = false;
+                    madeChanges = true;
                 }
+            }
 
-                _context.PagePermissions.AddRange(pagePermissions);
+            if (pagePermissionsToInsert.Count > 0)
+            {
+                _context.PagePermissions.AddRange(pagePermissionsToInsert);
+            }
+
+            if (madeChanges)
+            {
                 await _context.SaveChangesAsync();
             }
         }
 
         private async Task SeedRolePermissionsAsync()
         {
-            if (!await _context.RolePermissions.AnyAsync())
+            var adminRole = await _context.Roles.FirstAsync(r => r.RoleName == "Admin");
+            var generalRole = await _context.Roles.FirstAsync(r => r.RoleName == "General");
+
+            var allPagePermissions = await _context.PagePermissions.ToListAsync();
+            var now = DateTime.UtcNow;
+            var madeChanges = false;
+
+            // Ensure Admin has ALL permissions for ALL pages (active)
+            foreach (var pagePermission in allPagePermissions)
             {
-                var adminRole = await _context.Roles.FirstAsync(r => r.RoleName == "Admin");
-                var generalRole = await _context.Roles.FirstAsync(r => r.RoleName == "General");
-
-                var allPagePermissions = await _context.PagePermissions.ToListAsync();
-                var rolePermissions = new List<RolePermission>();
-
-                // Admin gets ALL permissions for ALL pages
-                foreach (var pagePermission in allPagePermissions)
+                var existingAdminRp = await _context.RolePermissions
+                    .FirstOrDefaultAsync(rp => rp.RoleId == adminRole.RoleId && rp.PagePermissionId == pagePermission.PagePermissionId);
+                if (existingAdminRp == null)
                 {
-                    rolePermissions.Add(new RolePermission
+                    _context.RolePermissions.Add(new RolePermission
                     {
                         RoleId = adminRole.RoleId,
                         PagePermissionId = pagePermission.PagePermissionId,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = now,
                         IsActive = true
                     });
+                    madeChanges = true;
                 }
-
-                // General gets specific permissions for specific pages
-                // Read permissions for basic pages
-                var generalReadPermissions = allPagePermissions.Where(p => 
-                    p.PermissionId == (int)TempleApi.Enums.Permission.Read && (
-                        p.PageName == "Home" ||
-                        p.PageName == "Dashboard" ||
-                        p.PageName == "Devotees" ||
-                        p.PageName == "Donations" ||
-                        p.PageName == "Events" ||
-                        p.PageName == "Temples" ||
-                        p.PageName == "Areas" ||
-                        p.PageName == "Categories" ||
-                        p.PageName == "Products" ||
-                        p.PageName == "Sales" ||
-                        p.PageName == "EventExpenses" ||
-                        p.PageName == "EventExpenseItems" ||
-                        p.PageName == "EventExpenseServices"
-                    )
-                ).ToList();
-
-                // Create permissions for donations and basic temple management
-                var generalCreatePermissions = allPagePermissions.Where(p => 
-                    p.PermissionId == (int)TempleApi.Enums.Permission.Create && (
-                        p.PageName == "Donations" ||
-                        p.PageName == "Devotees" ||
-                        p.PageName == "EventExpenses" ||
-                        p.PageName == "EventExpenseItems"
-                    )
-                ).ToList();
-
-                // Update permissions for donations and expenses (general users can update their own records)
-                var generalUpdatePermissions = allPagePermissions.Where(p => 
-                    p.PermissionId == (int)TempleApi.Enums.Permission.Update && (
-                        p.PageName == "Donations" ||
-                        p.PageName == "EventExpenses" ||
-                        p.PageName == "EventExpenseItems"
-                    )
-                ).ToList();
-
-                // Add all general permissions
-                var generalPermissions = generalReadPermissions
-                    .Concat(generalCreatePermissions)
-                    .Concat(generalUpdatePermissions);
-
-                foreach (var pagePermission in generalPermissions)
+                else if (!existingAdminRp.IsActive)
                 {
-                    rolePermissions.Add(new RolePermission
+                    existingAdminRp.IsActive = true;
+                    madeChanges = true;
+                }
+            }
+
+            // General gets specific permissions for specific pages
+            var generalReadTargets = new HashSet<string>(new[]
+            {
+                "Home","Dashboard","Devotees","Donations","Events","Temples","Areas","Categories","Products","Sales","EventExpenses","EventExpenseItems","EventExpenseServices"
+            });
+
+            var generalCreateTargets = new HashSet<string>(new[]
+            {
+                "Donations","Devotees","EventExpenses","EventExpenseItems"
+            });
+
+            var generalUpdateTargets = new HashSet<string>(new[]
+            {
+                "Donations","EventExpenses","EventExpenseItems"
+            });
+
+            var generalDesired = allPagePermissions.Where(p =>
+                (p.PermissionId == (int)TempleApi.Enums.Permission.Read && generalReadTargets.Contains(p.PageName)) ||
+                (p.PermissionId == (int)TempleApi.Enums.Permission.Create && generalCreateTargets.Contains(p.PageName)) ||
+                (p.PermissionId == (int)TempleApi.Enums.Permission.Update && generalUpdateTargets.Contains(p.PageName))
+            ).ToList();
+
+            foreach (var pagePermission in generalDesired)
+            {
+                var existingGeneralRp = await _context.RolePermissions
+                    .FirstOrDefaultAsync(rp => rp.RoleId == generalRole.RoleId && rp.PagePermissionId == pagePermission.PagePermissionId);
+                if (existingGeneralRp == null)
+                {
+                    _context.RolePermissions.Add(new RolePermission
                     {
                         RoleId = generalRole.RoleId,
                         PagePermissionId = pagePermission.PagePermissionId,
-                        CreatedAt = DateTime.UtcNow,
+                        CreatedAt = now,
                         IsActive = true
                     });
+                    madeChanges = true;
                 }
+                else if (!existingGeneralRp.IsActive)
+                {
+                    existingGeneralRp.IsActive = true;
+                    madeChanges = true;
+                }
+            }
 
-                _context.RolePermissions.AddRange(rolePermissions);
+            if (madeChanges)
+            {
                 await _context.SaveChangesAsync();
             }
         }

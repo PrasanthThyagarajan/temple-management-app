@@ -35,7 +35,7 @@
                 <el-icon><Calendar /></el-icon>
                 <span>Events</span>
               </template>
-              <el-menu-item index="/add-events">
+              <el-menu-item index="/events">
                 <el-icon><Calendar /></el-icon> 
                 <span>Events</span>
               </el-menu-item>
@@ -254,7 +254,7 @@ onMounted(() => {
 // Menu visibility state
 const menuPermissions = ref({
   '/dashboard': false,
-  '/add-events': false,
+  '/events': false,
   '/event-expenses': false,
   '/event-expense-items': false,
   '/event-expense-services': false,

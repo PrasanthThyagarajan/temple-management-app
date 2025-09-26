@@ -48,11 +48,15 @@ namespace TempleApi.Security
 				var usernameOrEmail = (credentials[0] ?? string.Empty).Trim();
 				var password = credentials[1] ?? string.Empty;
 
-				var inputLower = usernameOrEmail.ToLower();
-				var user = await _context.Users
+				// For In-Memory database compatibility in tests, we need to handle case sensitivity differently
+				var users = await _context.Users
 					.Include(u => u.UserRoles)
 					.ThenInclude(ur => ur.Role)
-					.FirstOrDefaultAsync(u => u.Username.ToLower() == inputLower || u.Email.ToLower() == inputLower);
+					.ToListAsync();
+				
+				var user = users.FirstOrDefault(u => 
+					string.Equals(u.Username, usernameOrEmail, StringComparison.OrdinalIgnoreCase) || 
+					string.Equals(u.Email, usernameOrEmail, StringComparison.OrdinalIgnoreCase));
 
 				if (user == null)
 				{
