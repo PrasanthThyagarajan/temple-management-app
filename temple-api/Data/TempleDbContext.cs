@@ -38,6 +38,8 @@ namespace TempleApi.Data
         public DbSet<ExpenseApprovalRoleConfiguration> ExpenseApprovalRoleConfigurations { get; set; }
         public DbSet<EventApprovalRoleConfiguration> EventApprovalRoleConfigurations { get; set; }
         public DbSet<Voucher> Vouchers { get; set; }
+        public DbSet<ContributionSetting> ContributionSettings { get; set; }
+        public DbSet<Contribution> Contributions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -67,6 +69,8 @@ namespace TempleApi.Data
             modelBuilder.Entity<ExpenseService>().ToTable("ExpenseServices");
             modelBuilder.Entity<ExpenseApprovalRoleConfiguration>().ToTable("ExpenseApprovalRoleConfigurations");
             modelBuilder.Entity<EventApprovalRoleConfiguration>().ToTable("EventApprovalRoleConfigurations");
+            modelBuilder.Entity<ContributionSetting>().ToTable("ContributionSettings");
+            modelBuilder.Entity<Contribution>().ToTable("Contributions");
             modelBuilder.Entity<EventApprovalRoleConfiguration>(entity =>
             {
                 entity.Property(e => e.EventId).IsRequired();
@@ -80,6 +84,45 @@ namespace TempleApi.Data
                 entity.HasOne(e => e.UserRole)
                     .WithMany()
                     .HasForeignKey(e => e.UserRoleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // ContributionSetting configuration
+            modelBuilder.Entity<ContributionSetting>(entity =>
+            {
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Description).HasMaxLength(500);
+                entity.Property(e => e.ContributionType).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.RecurringFrequency).HasMaxLength(20);
+                
+                entity.HasOne(e => e.Event)
+                    .WithMany()
+                    .HasForeignKey(e => e.EventId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Contribution configuration
+            modelBuilder.Entity<Contribution>(entity =>
+            {
+                entity.Property(e => e.Amount).IsRequired().HasColumnType("decimal(10,2)");
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.PaymentMethod).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.TransactionReference).HasMaxLength(100);
+                
+                entity.HasOne(e => e.Event)
+                    .WithMany()
+                    .HasForeignKey(e => e.EventId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.Devotee)
+                    .WithMany()
+                    .HasForeignKey(e => e.DevoteeId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.ContributionSetting)
+                    .WithMany()
+                    .HasForeignKey(e => e.ContributionSettingId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

@@ -468,5 +468,57 @@ public static class EditApis
         });
 
         #endregion
+
+        #region Contribution Settings Edit Endpoints
+
+        app.MapPut("/api/contribution-settings/{id}", async (int id, CreateContributionSettingDto updateDto, IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var setting = await contributionSettingService.UpdateAsync(id, updateDto);
+                if (setting == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(setting);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error updating contribution setting {Id}", id);
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating contribution setting {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
+
+        #region Contribution Edit Endpoints
+
+        app.MapPut("/api/contributions/{id}", async (int id, CreateContributionDto updateDto, IContributionService contributionService) =>
+        {
+            try
+            {
+                var contribution = await contributionService.UpdateAsync(id, updateDto);
+                if (contribution == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(contribution);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error updating contribution {Id}", id);
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating contribution {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
     }
 }

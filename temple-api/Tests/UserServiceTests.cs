@@ -24,7 +24,7 @@ namespace TempleApi.Tests
 
             _context = new TempleDbContext(options);
             _userRepository = new TempleApi.Repositories.UserRepository(_context);
-            _userService = new UserService(_userRepository);
+            _userService = new UserService(_userRepository, _context);
         }
 
         [Fact]

@@ -29,12 +29,17 @@ namespace TempleApi.Services
             try
             {
                 var input = (request.Username ?? string.Empty).Trim();
-                var inputLower = input.ToLower();
 
-                var user = await _context.Users
+                // EF Core InMemory provider can behave differently for case-sensitive queries.
+                // Fetch users and compare in-memory using case-insensitive equality to be robust across providers.
+                var users = await _context.Users
                     .Include(u => u.UserRoles)
                     .ThenInclude(ur => ur.Role)
-                    .FirstOrDefaultAsync(u => u.Username.ToLower() == inputLower || u.Email.ToLower() == inputLower);
+                    .ToListAsync();
+
+                var user = users.FirstOrDefault(u =>
+                    string.Equals(u.Username, input, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(u.Email, input, StringComparison.OrdinalIgnoreCase));
 
                 if (user == null || !VerifyPassword(request.Password, user.PasswordHash))
                 {

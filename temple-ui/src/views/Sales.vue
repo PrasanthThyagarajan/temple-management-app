@@ -49,7 +49,7 @@
       <template #header>
         <div class="card-header">
           <h2>Sales Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             New Sale
           </el-button>
@@ -179,21 +179,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="paymentMethod" label="Payment" width="100" />
-        <el-table-column prop="status" label="Status" width="100">
-          <template #default="scope">
-            <el-tag :type="getStatusTagType(scope.row.status)">
-              {{ scope.row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column prop="notes" label="Notes" min-width="150" show-overflow-tooltip />
-        <el-table-column label="Actions" width="200" fixed="right">
+        <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
           <template #default="scope">
             <el-button size="small" @click.stop="viewSaleDetails(scope.row)">
               <el-icon><View /></el-icon>
               View
             </el-button>
-            <el-button size="small" @click.stop="editSale(scope.row)">
+            <el-button size="small" @click.stop="editSale(scope.row)" v-if="canUpdate">
               <el-icon><Edit /></el-icon>
               Edit
             </el-button>
@@ -201,7 +194,7 @@
               size="small"
               type="success"
               @click.stop="updateSaleStatus(scope.row.id, 'Completed')"
-              v-if="scope.row.status === 'Pending'"
+              v-if="scope.row.status === 'Pending' && canUpdate"
             >
               <el-icon><Check /></el-icon>
               Complete
@@ -210,6 +203,7 @@
               size="small"
               type="danger"
               @click.stop="deleteSale(scope.row.id)"
+              v-if="canDelete"
             >
               <el-icon><Delete /></el-icon>
               Delete
@@ -295,15 +289,6 @@
                 style="width: 100%"
                 placeholder="Enter discount amount"
               />
-            </el-form-item>
-          </el-col>
-          <el-col :xs="24" :sm="12" :md="12" :lg="12">
-            <el-form-item label="Status" prop="status">
-              <el-select v-model="saleForm.status" placeholder="Select status" style="width: 100%">
-                <el-option label="Completed" value="Completed" />
-                <el-option label="Pending" value="Pending" />
-                <el-option label="Cancelled" value="Cancelled" />
-              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -433,7 +418,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveSale" :loading="saving">
+          <el-button type="primary" @click="saveSale" :loading="saving" v-if="canCreate || canUpdate">
             {{ editingSale ? 'Update' : 'Create' }}
           </el-button>
         </span>
@@ -451,11 +436,6 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="Sale Date">
             {{ formatDate(selectedSale.saleDate) }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="getStatusTagType(selectedSale.status)">
-              {{ selectedSale.status }}
-            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Customer Name">{{ selectedSale.customerName }}</el-descriptions-item>
           <el-descriptions-item label="Customer Phone">{{ selectedSale.customerPhone }}</el-descriptions-item>
@@ -501,6 +481,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Download, ShoppingCart, Money, Check, Clock, View, Calendar, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
+
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
 
 // Reactive data
 const sales = ref([])
@@ -550,7 +535,6 @@ const saleForm = reactive({
   saleDate: dayjs().format('YYYY-MM-DD'),
   paymentMethod: 'Cash',
   discountAmount: 0,
-  status: 'Completed',
   totalAmount: 0,
   finalAmount: 0,
   notes: '',
@@ -572,7 +556,6 @@ const saleRules = {
   customerPhone: [{ required: true, message: 'Customer phone is required', trigger: 'blur' }],
   saleDate: [{ required: true, message: 'Sale date is required', trigger: 'change' }],
   paymentMethod: [{ required: true, message: 'Payment method is required', trigger: 'change' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 }
 
 const saleFormRef = ref()
@@ -852,7 +835,6 @@ const resetForm = () => {
     saleDate: dayjs().format('YYYY-MM-DD'),
     paymentMethod: 'Cash',
     discountAmount: 0,
-    status: 'Completed',
     totalAmount: 0,
     finalAmount: 0,
     notes: '',
@@ -899,11 +881,18 @@ const handleResize = () => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadSales()
   loadProducts()
   loadEvents()
   window.addEventListener('resize', handleResize)
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/sales')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/sales')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/sales')
+  }
 })
 
 onUnmounted(() => {

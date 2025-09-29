@@ -242,6 +242,11 @@ public static class CreateApis
                 }
                 return Results.Created($"/api/devotees/{devotee.Id}", new { devotee, generatedPassword });
             }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error creating devotee");
+                return Results.BadRequest(ex.Message);
+            }
             catch (Exception ex)
             {
                 Log.Error(ex, "Error creating devotee");
@@ -501,6 +506,52 @@ public static class CreateApis
                 return Results.Problem($"Failed to send email: {ex.Message}");
             }
         });
+
+        #endregion
+
+        #region Contribution Settings Create Endpoints
+
+        app.MapPost("/api/contribution-settings", async (CreateContributionSettingDto createDto, IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var setting = await contributionSettingService.CreateAsync(createDto);
+                return Results.Created($"/api/contribution-settings/{setting.Id}", setting);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error creating contribution setting");
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error creating contribution setting");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
+
+        #region Contribution Create Endpoints
+
+        app.MapPost("/api/contributions", async (CreateContributionDto createDto, IContributionService contributionService) =>
+        {
+            try
+            {
+                var contribution = await contributionService.CreateAsync(createDto);
+                return Results.Created($"/api/contributions/{contribution.Id}", contribution);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error creating contribution");
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error creating contribution");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
 
         #endregion
     }

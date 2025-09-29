@@ -12,15 +12,6 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="summary-card active">
-          <el-statistic title="Active Devotees" :value="summaryStats.active">
-            <template #prefix>
-              <el-icon style="vertical-align: middle; color: #67c23a;"><UserFilled /></el-icon>
-            </template>
-          </el-statistic>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
         <el-card class="summary-card">
           <el-statistic title="Temples Represented" :value="summaryStats.temples">
             <template #prefix>
@@ -44,7 +35,7 @@
       <template #header>
         <div class="card-header">
           <h2>Devotee Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Devotee
           </el-button>
@@ -158,17 +149,10 @@
               {{ formatDate(scope.row.membershipDate) }}
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'" size="small">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="Actions" width="200" fixed="right">
+          <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
               <div class="action-buttons">
-                <el-button size="small" @click.stop="editDevotee(scope.row)">
+                <el-button size="small" @click.stop="editDevotee(scope.row)" v-if="canUpdate">
                   <el-icon><Edit /></el-icon>
                   <span class="btn-text">Edit</span>
                 </el-button>
@@ -176,6 +160,7 @@
                   size="small"
                   type="danger"
                   @click.stop="deleteDevotee(scope.row.id)"
+                  v-if="canDelete"
                 >
                   <el-icon><Delete /></el-icon>
                   <span class="btn-text">Delete</span>
@@ -213,6 +198,27 @@
         :rules="devoteeRules"
         label-width="120px"
       >
+        <el-form-item label="Existing User" prop="userId" v-if="!editingDevotee">
+          <el-select
+            v-model="devoteeForm.userId"
+            placeholder="Select existing user (optional)"
+            clearable
+            filterable
+            @change="handleUserSelection"
+            style="width: 100%"
+            :no-data-text="activeUsers.length === 0 ? 'No available users (all users are already linked to devotees)' : 'No matching data'"
+          >
+            <el-option
+              v-for="user in activeUsers"
+              :key="user.userId"
+              :label="`${user.fullName} (${user.email})`"
+              :value="user.userId"
+            />
+          </el-select>
+          <div style="color: #909399; font-size: 12px; margin-top: 4px;">
+            {{ activeUsers.length === 0 ? 'All eligible users are already registered as devotees. (Admin users are excluded)' : 'Leave empty to create a new user account. Admin users are not shown.' }}
+          </div>
+        </el-form-item>
         <el-form-item label="Full Name" prop="name">
           <el-input v-model="devoteeForm.name" placeholder="Enter full name" />
         </el-form-item>
@@ -226,9 +232,18 @@
           <el-input
             v-model="devoteeForm.address"
             type="textarea"
-            :rows="3"
-            placeholder="Enter address"
+            :rows="2"
+            placeholder="Enter street address"
           />
+        </el-form-item>
+        <el-form-item label="City" prop="city">
+          <el-input v-model="devoteeForm.city" placeholder="Enter city" />
+        </el-form-item>
+        <el-form-item label="State" prop="state">
+          <el-input v-model="devoteeForm.state" placeholder="Enter state" />
+        </el-form-item>
+        <el-form-item label="Postal Code" prop="postalCode">
+          <el-input v-model="devoteeForm.postalCode" placeholder="Enter postal code" />
         </el-form-item>
         <el-form-item label="Temple" prop="templeId">
           <el-select
@@ -271,12 +286,6 @@
             <el-option label="Other" value="Other" />
           </el-select>
         </el-form-item>
-        <el-form-item label="Status" prop="status">
-          <el-select v-model="devoteeForm.status" placeholder="Select status">
-            <el-option label="Active" value="Active" />
-            <el-option label="Inactive" value="Inactive" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="Notes" prop="notes">
           <el-input
             v-model="devoteeForm.notes"
@@ -289,7 +298,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveDevotee" :loading="saving">
+          <el-button type="primary" @click="saveDevotee" :loading="saving" v-if="editingDevotee ? canUpdate : canCreate">
             {{ editingDevotee ? 'Update' : 'Create' }}
           </el-button>
         </span>
@@ -306,11 +315,6 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="Full Name">
             {{ selectedDevotee.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="selectedDevotee.status === 'Active' ? 'success' : 'warning'">
-              {{ selectedDevotee.status }}
-            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Email">{{ selectedDevotee.email }}</el-descriptions-item>
           <el-descriptions-item label="Phone">{{ selectedDevotee.phone }}</el-descriptions-item>
@@ -344,6 +348,7 @@ import dayjs from 'dayjs'
 // Reactive data
 const devotees = ref([])
 const temples = ref([])
+const activeUsers = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
@@ -359,15 +364,18 @@ const selectedDevotee = ref(null)
 
 // Form data
 const devoteeForm = reactive({
+  userId: null,
   name: '',
   email: '',
   phone: '',
   address: '',
+  city: '',
+  state: '',
+  postalCode: '',
   templeId: '',
   membershipDate: '',
   dateOfBirth: '',
   gender: '',
-  status: 'Active',
   notes: ''
 })
 
@@ -382,7 +390,6 @@ const devoteeRules = {
   templeId: [{ required: true, message: 'Temple selection is required', trigger: 'change' }],
   membershipDate: [{ required: true, message: 'Membership date is required', trigger: 'change' }],
   gender: [{ required: true, message: 'Gender selection is required', trigger: 'change' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 }
 
 const devoteeFormRef = ref()
@@ -390,11 +397,25 @@ const devoteeFormRef = ref()
 // API base URL
 const API_BASE = '/api'
 
+// Permissions for this page
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
+const refreshPermissions = async () => {
+  try {
+    if (window && window["templeAuth"]) {
+      canCreate.value = await window["templeAuth"].hasCreatePermission('/devotees')
+      canUpdate.value = await window["templeAuth"].hasUpdatePermission('/devotees')
+      canDelete.value = await window["templeAuth"].hasDeletePermission('/devotees')
+    }
+  } catch (_) { /* ignore */ }
+}
+
 // Summary Statistics
 const summaryStats = computed(() => {
   return {
     total: devotees.value.length,
-    active: devotees.value.filter(d => d.status === 'Active').length,
     temples: [...new Set(devotees.value.map(d => d.templeId))].length
   }
 })
@@ -492,6 +513,17 @@ const loadTemples = async () => {
   }
 }
 
+const loadActiveUsers = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/devotees/available-users`)
+    // Users are already filtered on the backend
+    activeUsers.value = response.data
+  } catch (error) {
+    console.error('Error loading available users:', error)
+    activeUsers.value = []
+  }
+}
+
 const handleSearch = () => {
   currentPage.value = 1
 }
@@ -502,6 +534,21 @@ const handleFilterChange = () => {
 
 const handleSortChange = () => {
   // Sorting doesn't require resetting pagination
+}
+
+const handleUserSelection = (userId) => {
+  if (userId) {
+    const selectedUser = activeUsers.value.find(u => u.userId === userId)
+    if (selectedUser) {
+      // Pre-fill form with user data
+      devoteeForm.name = selectedUser.fullName
+      devoteeForm.email = selectedUser.email
+      devoteeForm.phone = selectedUser.phoneNumber || ''
+      devoteeForm.address = selectedUser.address || ''
+      devoteeForm.gender = selectedUser.gender || ''
+      devoteeForm.dateOfBirth = selectedUser.dateOfBirth || ''
+    }
+  }
 }
 
 const handleTableSortChange = ({ prop, order }) => {
@@ -530,9 +577,17 @@ const saveDevotee = async () => {
     
     // Clean up form data before sending
     const formData = {
-      ...devoteeForm,
+      name: devoteeForm.name,
+      email: devoteeForm.email,
+      phone: devoteeForm.phone,
+      address: devoteeForm.address,
+      city: devoteeForm.city,
+      state: devoteeForm.state,
+      postalCode: devoteeForm.postalCode,
+      templeId: devoteeForm.templeId,
       dateOfBirth: devoteeForm.dateOfBirth || null,
-      membershipDate: devoteeForm.membershipDate || null
+      gender: devoteeForm.gender,
+      userId: devoteeForm.userId || 0
     }
     
     if (editingDevotee.value) {
@@ -557,6 +612,7 @@ const saveDevotee = async () => {
     showCreateDialog.value = false
     resetForm()
     loadDevotees()
+    loadActiveUsers() // Refresh available users list
   } catch (error) {
     if (error.response?.data) {
       ElMessage.error(error.response.data)
@@ -583,6 +639,7 @@ const deleteDevotee = async (id) => {
     await axios.delete(`${API_BASE}/devotees/${id}`)
     ElMessage.success('Devotee deleted successfully')
     loadDevotees()
+    loadActiveUsers() // Refresh available users list
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Error deleting devotee:', error)
@@ -599,15 +656,18 @@ const handleRowClick = (row) => {
 const resetForm = () => {
   editingDevotee.value = null
   Object.assign(devoteeForm, {
+    userId: null,
     name: '',
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    postalCode: '',
     templeId: '',
     membershipDate: '',
     dateOfBirth: '',
     gender: '',
-    status: 'Active',
     notes: ''
   })
   devoteeFormRef.value?.resetFields()
@@ -630,7 +690,9 @@ const handleCurrentChange = (val) => {
 // Lifecycle
 onMounted(async () => {
   await loadTemples()
+  await loadActiveUsers()
   await loadDevotees()
+  await refreshPermissions()
 })
 </script>
 

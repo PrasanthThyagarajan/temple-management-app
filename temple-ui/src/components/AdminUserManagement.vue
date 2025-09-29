@@ -84,11 +84,6 @@
           </el-table-column>
           <el-table-column prop="email" label="Email" min-width="200" show-overflow-tooltip sortable />
           <el-table-column prop="fullName" label="Full Name" min-width="180" show-overflow-tooltip sortable />
-          <el-table-column label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.isActive ? 'success' : 'danger'">{{ scope.row.isActive ? 'Active' : 'Inactive' }}</el-tag>
-            </template>
-          </el-table-column>
           <el-table-column label="Actions" width="200" fixed="right">
             <template #default="scope">
               <div class="action-buttons">

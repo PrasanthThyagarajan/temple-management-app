@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <h2>Expense Items Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Event Expense Item
           </el-button>
@@ -100,16 +100,9 @@
               {{ formatDate(scope.row.createdAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="Status" width="100">
+          <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
-              <el-tag :type="scope.row.isActive ? 'success' : 'danger'">
-                {{ scope.row.isActive ? 'Active' : 'Inactive' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="Actions" width="200" fixed="right">
-            <template #default="scope">
-              <el-button size="small" @click="editExpenseItem(scope.row)">
+              <el-button size="small" @click="editExpenseItem(scope.row)" v-if="canUpdate">
                 <el-icon><Edit /></el-icon>
                 Edit
               </el-button>
@@ -117,6 +110,7 @@
                 size="small" 
                 type="danger" 
                 @click="deleteExpenseItem(scope.row)"
+                v-if="canDelete"
               >
                 <el-icon><Delete /></el-icon>
                 Delete
@@ -187,6 +181,7 @@
             type="primary" 
             :loading="saving" 
             @click="saveExpenseItem"
+            v-if="canCreate || canUpdate"
           >
             {{ editingExpenseItem ? 'Update' : 'Create' }}
           </el-button>
@@ -202,6 +197,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Document, Check } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
+
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
 
 // Reactive data
 const expenseItems = ref([])
@@ -384,9 +384,16 @@ const saveExpenseItem = async () => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadExpenseItems()
   loadRoles()
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/event-expense-items')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/event-expense-items')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/event-expense-items')
+  }
 })
 </script>
 

@@ -89,5 +89,76 @@ namespace TempleApi.Services
         {
             return _databaseSettings.ConnectionString;
         }
+
+        public async Task EnsureContributionTablesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Ensuring Contribution tables exist");
+                
+                // Create ContributionSettings table if it doesn't exist
+                var createContributionSettingsTable = @"
+                    CREATE TABLE IF NOT EXISTS ""ContributionSettings"" (
+                        ""Id"" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        ""Name"" TEXT NOT NULL,
+                        ""Description"" TEXT,
+                        ""EventId"" INTEGER NOT NULL,
+                        ""ContributionType"" TEXT NOT NULL,
+                        ""Amount"" DECIMAL(10,2) NOT NULL,
+                        ""RecurringDay"" INTEGER,
+                        ""RecurringFrequency"" TEXT,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""UpdatedAt"" TEXT,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        CONSTRAINT ""FK_ContributionSettings_Events_EventId"" FOREIGN KEY (""EventId"") REFERENCES ""Events"" (""Id"") ON DELETE CASCADE
+                    );";
+
+                await _context.Database.ExecuteSqlRawAsync(createContributionSettingsTable);
+                _logger.LogInformation("ContributionSettings table created or already exists");
+
+                // Create Contributions table if it doesn't exist
+                var createContributionsTable = @"
+                    CREATE TABLE IF NOT EXISTS ""Contributions"" (
+                        ""Id"" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        ""EventId"" INTEGER NOT NULL,
+                        ""DevoteeId"" INTEGER NOT NULL,
+                        ""ContributionSettingId"" INTEGER NOT NULL,
+                        ""Amount"" DECIMAL(10,2) NOT NULL,
+                        ""ContributionDate"" TEXT NOT NULL,
+                        ""Notes"" TEXT,
+                        ""PaymentMethod"" TEXT NOT NULL,
+                        ""TransactionReference"" TEXT,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""UpdatedAt"" TEXT,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        CONSTRAINT ""FK_Contributions_Events_EventId"" FOREIGN KEY (""EventId"") REFERENCES ""Events"" (""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_Contributions_Devotees_DevoteeId"" FOREIGN KEY (""DevoteeId"") REFERENCES ""Devotees"" (""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_Contributions_ContributionSettings_ContributionSettingId"" FOREIGN KEY (""ContributionSettingId"") REFERENCES ""ContributionSettings"" (""Id"") ON DELETE CASCADE
+                    );";
+
+                await _context.Database.ExecuteSqlRawAsync(createContributionsTable);
+                _logger.LogInformation("Contributions table created or already exists");
+
+                // Create indexes
+                var indexes = new[]
+                {
+                    @"CREATE INDEX IF NOT EXISTS ""IX_ContributionSettings_EventId"" ON ""ContributionSettings"" (""EventId"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Contributions_EventId"" ON ""Contributions"" (""EventId"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Contributions_DevoteeId"" ON ""Contributions"" (""DevoteeId"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Contributions_ContributionSettingId"" ON ""Contributions"" (""ContributionSettingId"");"
+                };
+
+                foreach (var indexSql in indexes)
+                {
+                    await _context.Database.ExecuteSqlRawAsync(indexSql);
+                }
+                _logger.LogInformation("Contribution table indexes created");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring Contribution tables exist");
+                throw;
+            }
+        }
     }
 }

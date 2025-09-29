@@ -260,5 +260,47 @@ public static class DeleteApis
         });
 
         #endregion
+
+        #region Contribution Settings Delete Endpoints
+
+        app.MapDelete("/api/contribution-settings/{id}", async (int id, IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var result = await contributionSettingService.DeleteAsync(id);
+                if (!result)
+                    return Results.NotFound();
+                
+                return Results.Ok(new { message = "Contribution setting deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error deleting contribution setting {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
+
+        #region Contribution Delete Endpoints
+
+        app.MapDelete("/api/contributions/{id}", async (int id, IContributionService contributionService) =>
+        {
+            try
+            {
+                var result = await contributionService.DeleteAsync(id);
+                if (!result)
+                    return Results.NotFound();
+                
+                return Results.Ok(new { message = "Contribution deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error deleting contribution {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
     }
 }

@@ -54,7 +54,7 @@
               <el-icon><Refresh /></el-icon>
               Refresh
             </el-button>
-            <el-button type="primary" @click="showCreateDialog = true">
+            <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
               <el-icon><Plus /></el-icon>
               Add {{ activeTab === 'service' ? 'Service' : 'Item' }} Expense
             </el-button>
@@ -165,17 +165,17 @@
                     <span v-else class="text-muted">—</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Actions" width="200" fixed="right">
+                <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
                   <template #default="scope">
                     <el-button size="small" type="success" @click.stop="approveServiceExpense(scope.row)">
                       <el-icon><Check /></el-icon>
                       Approve
                     </el-button>
-                    <el-button size="small" @click.stop="editServiceExpense(scope.row)">
+                    <el-button size="small" @click.stop="editServiceExpense(scope.row)" v-if="canUpdate">
                       <el-icon><Edit /></el-icon>
                       Edit
                     </el-button>
-                    <el-button size="small" type="danger" @click.stop="deleteServiceExpense(scope.row.id)">
+                    <el-button size="small" type="danger" @click.stop="deleteServiceExpense(scope.row.id)" v-if="canDelete">
                       <el-icon><Delete /></el-icon>
                       Delete
                     </el-button>
@@ -265,7 +265,7 @@
                     <span v-else class="text-muted">—</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Actions" width="150" fixed="right">
+                <el-table-column label="Actions" width="150" fixed="right" v-if="canUpdate || canDelete">
                   <template #default="scope">
                     <el-button size="small" @click.stop="editServiceExpense(scope.row)">
                       <el-icon><Edit /></el-icon>
@@ -354,17 +354,17 @@
                     <span v-else class="text-muted">—</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Actions" width="200" fixed="right">
+                <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
                   <template #default="scope">
                     <el-button size="small" type="success" @click.stop="approveItemExpense(scope.row)">
                       <el-icon><Check /></el-icon>
                       Approve
                     </el-button>
-                    <el-button size="small" @click.stop="editItemExpense(scope.row)">
+                    <el-button size="small" @click.stop="editItemExpense(scope.row)" v-if="canUpdate">
                       <el-icon><Edit /></el-icon>
                       Edit
                     </el-button>
-                    <el-button size="small" type="danger" @click.stop="deleteItemExpense(scope.row.id)">
+                    <el-button size="small" type="danger" @click.stop="deleteItemExpense(scope.row.id)" v-if="canDelete">
                       <el-icon><Delete /></el-icon>
                       Delete
                     </el-button>
@@ -454,7 +454,7 @@
                     <span v-else class="text-muted">—</span>
                   </template>
                 </el-table-column>
-                <el-table-column label="Actions" width="150" fixed="right">
+                <el-table-column label="Actions" width="150" fixed="right" v-if="canUpdate || canDelete">
                   <template #default="scope">
                     <el-button size="small" @click.stop="editItemExpense(scope.row)">
                       <el-icon><Edit /></el-icon>
@@ -532,7 +532,7 @@
         </el-form>
         <template #footer>
           <el-button @click="onCancelCreate">Cancel</el-button>
-          <el-button type="primary" :loading="saving" @click="saveExpense">Create</el-button>
+          <el-button type="primary" :loading="saving" @click="saveExpense" v-if="canCreate">Create</el-button>
         </template>
       </el-dialog>
 
@@ -583,7 +583,7 @@
         </el-form>
         <template #footer>
           <el-button @click="onCancelEdit">Cancel</el-button>
-          <el-button type="primary" :loading="updating" @click="updateExpense">Update</el-button>
+          <el-button type="primary" :loading="updating" @click="updateExpense" v-if="canUpdate">Update</el-button>
         </template>
       </el-dialog>
 
@@ -680,6 +680,20 @@ const expenseRules = computed(() => ({
 
 
 const API_BASE = '/api'
+// Permissions for this page
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
+const refreshPermissions = async () => {
+  try {
+    if (window && window["templeAuth"]) {
+      canCreate.value = await window["templeAuth"].hasCreatePermission('/event-expenses')
+      canUpdate.value = await window["templeAuth"].hasUpdatePermission('/event-expenses')
+      canDelete.value = await window["templeAuth"].hasDeletePermission('/event-expenses')
+    }
+  } catch (_) { /* ignore */ }
+}
 // const canApprove = ref(false) // Commented out - unused variable
 
 // Computed properties for separating item expenses into two lists
@@ -1159,6 +1173,7 @@ onMounted(() => {
   loadExpenseServices()
   loadEvents()
   loadEventExpenses()
+  refreshPermissions()
   window.addEventListener('resize', handleResize)
 })
 

@@ -35,7 +35,7 @@
       <template #header>
         <div class="card-header">
           <h2>Category Management</h2>
-          <el-button type="primary" @click="showAddDialog">
+          <el-button type="primary" @click="showAddDialog" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Category
           </el-button>
@@ -135,25 +135,19 @@
             align="center" 
             sortable="custom"
           />
-          <el-table-column label="Status" width="100" align="center">
-            <template #default="{ row }">
-              <el-tag :type="row.isActive ? 'success' : 'danger'">
-                {{ row.isActive ? 'Active' : 'Inactive' }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="createdAt" label="Created Date" width="160" sortable="custom">
             <template #default="{ row }">
               {{ formatDate(row.createdAt) }}
             </template>
           </el-table-column>
-          <el-table-column label="Actions" width="180" align="center">
+          <el-table-column label="Actions" width="180" align="center" v-if="canUpdate || canDelete">
             <template #default="{ row }">
               <el-button
                 type="primary"
                 size="small"
                 :icon="Edit"
                 @click="showEditDialog(row)"
+                v-if="canUpdate"
               >
                 <span class="btn-text">Edit</span>
               </el-button>
@@ -162,6 +156,7 @@
                 size="small"
                 :icon="Switch"
                 @click="toggleStatus(row)"
+                v-if="canUpdate"
               >
                 <span class="btn-text">{{ row.isActive ? 'Deactivate' : 'Activate' }}</span>
               </el-button>
@@ -170,6 +165,7 @@
                 size="small"
                 :icon="Delete"
                 @click="confirmDelete(row)"
+                v-if="canDelete"
               >
                 <span class="btn-text">Delete</span>
               </el-button>
@@ -232,7 +228,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="dialogVisible = false">Cancel</el-button>
-          <el-button type="primary" @click="submitForm" :loading="submitting">
+          <el-button type="primary" @click="submitForm" :loading="submitting" v-if="canCreate || canUpdate">
             {{ isEditing ? 'Update' : 'Create' }}
           </el-button>
         </div>
@@ -275,6 +271,11 @@ const categoryForm = reactive({
   sortOrder: 0,
   isActive: true
 })
+
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
 
 // Form validation rules
 const rules = {
@@ -517,9 +518,16 @@ const handleResize = () => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadCategories()
   window.addEventListener('resize', handleResize)
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/categories')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/categories')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/categories')
+  }
 })
 
 onUnmounted(() => {

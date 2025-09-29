@@ -355,6 +355,20 @@ public static class ReadApis
             return Results.Ok(permissions);
         }).RequireAuthorization();
 
+        app.MapGet("/api/users/without-devotees", async (IUserService userService) =>
+        {
+            try
+            {
+                var users = await userService.GetUsersWithoutDevoteesAsync();
+                return Results.Ok(users);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting users without devotees");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
         #endregion
 
         #region Temple Management Read Endpoints
@@ -536,6 +550,20 @@ public static class ReadApis
                 return Results.Problem("Internal server error");
             }
         });
+
+        app.MapGet("/api/devotees/available-users", async (IUserService userService) =>
+        {
+            try
+            {
+                var users = await userService.GetUsersWithoutDevoteesAsync();
+                return Results.Ok(users);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting available users for devotees");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
 
         app.MapGet("/api/devotees/search/{searchTerm}", async (string searchTerm, IDevoteeService devoteeService) =>
         {
@@ -1185,6 +1213,160 @@ public static class ReadApis
                 }
             }
         });
+
+        #endregion
+
+        #region Contribution Settings Read Endpoints
+
+        app.MapGet("/api/contribution-settings", async (IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var settings = await contributionSettingService.GetAllAsync();
+                return Results.Ok(settings);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting all contribution settings");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contribution-settings/{id}", async (int id, IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var setting = await contributionSettingService.GetByIdAsync(id);
+                if (setting == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(setting);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contribution setting with id {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contribution-settings/event/{eventId}", async (int eventId, IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var settings = await contributionSettingService.GetByEventIdAsync(eventId);
+                return Results.Ok(settings);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contribution settings for event {EventId}", eventId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contribution-settings/active", async (IContributionSettingService contributionSettingService) =>
+        {
+            try
+            {
+                var settings = await contributionSettingService.GetActiveContributionsAsync();
+                return Results.Ok(settings);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting active contribution settings");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
+
+        #region Contribution Read Endpoints
+
+        app.MapGet("/api/contributions", async (IContributionService contributionService) =>
+        {
+            try
+            {
+                var contributions = await contributionService.GetAllAsync();
+                return Results.Ok(contributions);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting all contributions");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contributions/{id}", async (int id, IContributionService contributionService) =>
+        {
+            try
+            {
+                var contribution = await contributionService.GetByIdAsync(id);
+                if (contribution == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(contribution);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contribution with id {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contributions/event/{eventId}", async (int eventId, IContributionService contributionService) =>
+        {
+            try
+            {
+                var contributions = await contributionService.GetByEventIdAsync(eventId);
+                return Results.Ok(contributions);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contributions for event {EventId}", eventId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contributions/devotee/{devoteeId}", async (int devoteeId, IContributionService contributionService) =>
+        {
+            try
+            {
+                var contributions = await contributionService.GetByDevoteeIdAsync(devoteeId);
+                return Results.Ok(contributions);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contributions for devotee {DevoteeId}", devoteeId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contributions/summary", async (IContributionService contributionService) =>
+        {
+            try
+            {
+                var summary = await contributionService.GetContributionSummaryByEventAsync();
+                return Results.Ok(summary);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting contribution summary");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/contributions/total/{eventId}", async (int eventId, IContributionService contributionService) =>
+        {
+            try
+            {
+                var total = await contributionService.GetTotalContributionsByEventAsync(eventId);
+                return Results.Ok(new { eventId, totalAmount = total });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting total contributions for event {EventId}", eventId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
 
         #endregion
 

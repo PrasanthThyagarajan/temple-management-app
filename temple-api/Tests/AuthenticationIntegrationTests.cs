@@ -10,10 +10,12 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TempleApi.Data;
 using TempleApi.Domain.Entities;
 using TempleApi.Models.DTOs;
+using TempleApi.Services;
 using Xunit;
 
 namespace TempleApi.Tests
@@ -38,6 +40,13 @@ namespace TempleApi.Tests
                         d => d.ServiceType == typeof(DbContextOptions<TempleDbContext>));
                     if (descriptor != null)
                         services.Remove(descriptor);
+
+                    // Remove DataSeedingService to prevent conflicts
+                    var seedingDescriptor = services.SingleOrDefault(
+                        d => d.ServiceType == typeof(IHostedService) && 
+                            d.ImplementationType == typeof(DataSeedingService));
+                    if (seedingDescriptor != null)
+                        services.Remove(seedingDescriptor);
 
                     // Add in-memory database for testing
                     services.AddDbContext<TempleDbContext>(options =>
@@ -111,6 +120,9 @@ namespace TempleApi.Tests
             };
             db.RolePermissions.Add(rolePermission);
             db.SaveChanges();
+            
+            // Ensure all changes are committed and user is properly set up
+            db.Database.EnsureCreated();
         }
 
         [Fact]

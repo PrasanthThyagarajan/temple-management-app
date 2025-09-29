@@ -9,6 +9,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Generic;
+using TempleApi.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace TempleApi.Services
 {
@@ -17,18 +19,21 @@ namespace TempleApi.Services
         private readonly IUserRepository _userRepository;
         private readonly IConfiguration _configuration;
         private readonly ILogger<UserService> _logger;
+        private readonly TempleDbContext _context;
 
-        public UserService(IUserRepository userRepository)
+        public UserService(IUserRepository userRepository, TempleDbContext context)
         {
             _userRepository = userRepository;
+            _context = context;
             // Fallbacks for tests or manual construction
             _configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
             _logger = NullLogger<UserService>.Instance;
         }
 
-        public UserService(IUserRepository userRepository, IConfiguration configuration, ILogger<UserService> logger)
+        public UserService(IUserRepository userRepository, TempleDbContext context, IConfiguration configuration, ILogger<UserService> logger)
         {
             _userRepository = userRepository;
+            _context = context;
             _configuration = configuration;
             _logger = logger;
         }
@@ -179,6 +184,33 @@ namespace TempleApi.Services
             }
 
             return newPassword;
+        }
+
+        public async Task<IEnumerable<UserDto>> GetUsersWithoutDevoteesAsync()
+        {
+            // Get all active and verified users
+            var allUsers = await _userRepository.GetAllAsync();
+            var activeUsers = allUsers.Where(u => u.IsActive && u.IsVerified);
+
+            // Get admin role users to exclude them
+            var adminUsers = await _context.UserRoles
+                .Include(ur => ur.Role)
+                .Where(ur => ur.Role.RoleName == "Admin" && ur.IsActive)
+                .Select(ur => ur.UserId)
+                .ToListAsync();
+
+            // Get all active devotees
+            var devotees = await _context.Devotees
+                .Where(d => d.IsActive)
+                .Select(d => d.UserId)
+                .ToListAsync();
+
+            // Filter out users who are already linked to devotees or are admins
+            var usersWithoutDevotees = activeUsers.Where(u => 
+                !devotees.Contains(u.UserId) && 
+                !adminUsers.Contains(u.UserId));
+
+            return usersWithoutDevotees.Select(MapToDto).ToList();
         }
 
         private string HashPassword(string password)

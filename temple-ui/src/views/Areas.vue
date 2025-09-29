@@ -44,7 +44,7 @@
       <template #header>
         <div class="card-header">
           <h2>Area Management</h2>
-          <el-button type="primary" @click="openCreateDialog">
+          <el-button type="primary" @click="openCreateDialog" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Area
           </el-button>
@@ -127,13 +127,13 @@
           min-width="250" 
           show-overflow-tooltip
         />
-        <el-table-column label="Actions" width="220" fixed="right">
+        <el-table-column label="Actions" width="220" fixed="right" v-if="canUpdate || canDelete">
           <template #default="scope">
-            <el-button size="small" @click.stop="editArea(scope.row)">
+            <el-button size="small" @click.stop="editArea(scope.row)" v-if="canUpdate">
               <el-icon><Edit /></el-icon>
               Edit
             </el-button>
-            <el-button size="small" type="danger" @click.stop="deleteArea(scope.row.id)">
+            <el-button size="small" type="danger" @click.stop="deleteArea(scope.row.id)" v-if="canDelete">
               <el-icon><Delete /></el-icon>
               Delete
             </el-button>
@@ -173,7 +173,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showDialog = false">Cancel</el-button>
-          <el-button type="primary" :loading="saving" @click="saveArea">{{ editingArea ? 'Update' : 'Create' }}</el-button>
+          <el-button type="primary" :loading="saving" @click="saveArea" v-if="canCreate || canUpdate">{{ editingArea ? 'Update' : 'Create' }}</el-button>
         </span>
       </template>
     </el-dialog>
@@ -200,6 +200,11 @@ const editingArea = ref(null)
 const areaFormRef = ref()
 const selectedTempleId = ref('')
 const sortBy = ref('name-asc')
+
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
 
 const areaForm = reactive({
   templeId: '',
@@ -371,9 +376,16 @@ const handleCurrentChange = (val) => {
   currentPage.value = val
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadAreas()
   loadTemples()
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/areas')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/areas')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/areas')
+  }
 })
 </script>
 

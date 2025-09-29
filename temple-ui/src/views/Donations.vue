@@ -49,7 +49,7 @@
       <template #header>
         <div class="card-header">
           <h2>Donation Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Donation
           </el-button>
@@ -189,17 +189,10 @@
             </template>
           </el-table-column>
           <el-table-column prop="purpose" label="Purpose" min-width="150" show-overflow-tooltip />
-          <el-table-column prop="status" label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === 'Completed' ? 'success' : 'warning'" size="small">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="Actions" width="200" fixed="right">
+          <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
               <div class="action-buttons">
-                <el-button size="small" @click.stop="editDonation(scope.row)">
+                <el-button size="small" @click.stop="editDonation(scope.row)" v-if="canUpdate">
                   <el-icon><Edit /></el-icon>
                   <span class="btn-text">Edit</span>
                 </el-button>
@@ -207,6 +200,7 @@
                   size="small"
                   type="danger"
                   @click.stop="deleteDonation(scope.row.id)"
+                  v-if="canDelete"
                 >
                   <el-icon><Delete /></el-icon>
                   <span class="btn-text">Delete</span>
@@ -345,7 +339,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveDonation" :loading="saving">
+          <el-button type="primary" @click="saveDonation" :loading="saving" v-if="editingDonation ? canUpdate : canCreate">
             {{ editingDonation ? 'Update' : 'Create' }}
           </el-button>
         </span>
@@ -362,11 +356,6 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="Donor Name">
             {{ selectedDonation.donorName }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="selectedDonation.status === 'Completed' ? 'success' : 'warning'">
-              {{ selectedDonation.status }}
-            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Amount">
             ₹{{ selectedDonation.amount.toLocaleString() }}
@@ -428,7 +417,6 @@ const donationForm = reactive({
   donationType: 'Cash',
   donationDate: '',
   purpose: '',
-  status: 'Pending',
   notes: ''
 })
 
@@ -440,13 +428,27 @@ const donationRules = {
   donationType: [{ required: true, message: 'Donation type is required', trigger: 'change' }],
   donationDate: [{ required: true, message: 'Donation date is required', trigger: 'change' }],
   purpose: [{ required: true, message: 'Purpose is required', trigger: 'blur' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 }
 
 const donationFormRef = ref()
 
 // API base URL
 const API_BASE = '/api'
+
+// Permissions for this page
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
+const refreshPermissions = async () => {
+  try {
+    if (window && window["templeAuth"]) {
+      canCreate.value = await window["templeAuth"].hasCreatePermission('/donations')
+      canUpdate.value = await window["templeAuth"].hasUpdatePermission('/donations')
+      canDelete.value = await window["templeAuth"].hasDeletePermission('/donations')
+    }
+  } catch (_) { /* ignore */ }
+}
 
 // Summary Statistics
 const summaryStats = computed(() => {
@@ -669,7 +671,6 @@ const resetForm = () => {
     donationType: 'Cash',
     donationDate: '',
     purpose: '',
-    status: 'Pending',
     notes: ''
   })
   donationFormRef.value?.resetFields()
@@ -730,6 +731,7 @@ const handleCurrentChange = (val) => {
 onMounted(async () => {
   await loadTemples()
   await loadDonations()
+  await refreshPermissions()
 })
 </script>
 

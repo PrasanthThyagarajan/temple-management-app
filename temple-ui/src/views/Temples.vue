@@ -44,7 +44,7 @@
       <template #header>
         <div class="card-header">
           <h2>Temple Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Temple
           </el-button>
@@ -107,7 +107,6 @@
           v-loading="loading"
           stripe
           style="width: 100%"
-          @row-click="handleRowClick"
           @sort-change="handleTableSortChange"
         >
           <el-table-column 
@@ -144,17 +143,10 @@
             show-overflow-tooltip 
             sortable="custom"
           />
-          <el-table-column prop="status" label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="scope.row.status === 'Active' ? 'success' : 'warning'" size="small">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="Actions" width="200" fixed="right">
+          <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
               <div class="action-buttons">
-                <el-button size="small" @click.stop="editTemple(scope.row)">
+                <el-button size="small" @click.stop="editTemple(scope.row)" v-if="canUpdate">
                   <el-icon><Edit /></el-icon>
                   <span class="btn-text">Edit</span>
                 </el-button>
@@ -162,6 +154,7 @@
                   size="small"
                   type="danger"
                   @click.stop="deleteTemple(scope.row.id)"
+                  v-if="canDelete"
                 >
                   <el-icon><Delete /></el-icon>
                   <span class="btn-text">Delete</span>
@@ -249,45 +242,13 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveTemple" :loading="saving">
+          <el-button type="primary" @click="saveTemple" :loading="saving" v-if="canCreate || canUpdate">
             {{ editingTemple ? 'Update' : 'Create' }}
           </el-button>
         </span>
       </template>
     </el-dialog>
 
-    <!-- Temple Details Dialog -->
-    <el-dialog
-      v-model="showDetailsDialog"
-      title="Temple Details"
-      :width="dialogWidth"
-      :fullscreen="isMobile"
-    >
-      <div v-if="selectedTemple" class="temple-details">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="Temple Name">
-            {{ selectedTemple.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="selectedTemple.status === 'Active' ? 'success' : 'warning'">
-              {{ selectedTemple.status }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="City">{{ selectedTemple.city }}</el-descriptions-item>
-          <el-descriptions-item label="State">{{ selectedTemple.state }}</el-descriptions-item>
-          <el-descriptions-item label="Established Year">
-            {{ selectedTemple.establishedYear }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Main Deity">{{ selectedTemple.deity }}</el-descriptions-item>
-          <el-descriptions-item label="Address" :span="2">
-            {{ selectedTemple.address }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Description" :span="2">
-            {{ selectedTemple.description }}
-          </el-descriptions-item>
-        </el-descriptions>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
@@ -307,9 +268,7 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const sortBy = ref('name-asc')
 const showCreateDialog = ref(false)
-const showDetailsDialog = ref(false)
 const editingTemple = ref(null)
-const selectedTemple = ref(null)
 
 // Form data
 const templeForm = reactive({
@@ -319,8 +278,7 @@ const templeForm = reactive({
   address: '',
   establishedYear: '',
   deity: '',
-  description: '',
-  status: 'Active'
+  description: ''
 })
 
 // Form validation rules
@@ -331,7 +289,6 @@ const templeRules = {
   address: [{ required: true, message: 'Address is required', trigger: 'blur' }],
   establishedYear: [{ required: true, message: 'Established year is required', trigger: 'change' }],
   deity: [{ required: true, message: 'Main deity is required', trigger: 'blur' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }]
 }
 
 const templeFormRef = ref()
@@ -343,11 +300,15 @@ const dialogWidth = ref('600px')
 // API base URL
 const API_BASE = '/api'
 
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
 // Summary Statistics
 const summaryStats = computed(() => {
   return {
     total: temples.value.length,
-    active: temples.value.filter(t => t.status === 'Active').length,
     states: [...new Set(temples.value.map(t => t.state).filter(Boolean))].length
   }
 })
@@ -519,10 +480,6 @@ const deleteTemple = async (id) => {
   }
 }
 
-const handleRowClick = (row) => {
-  selectedTemple.value = row
-  showDetailsDialog.value = true
-}
 
 const resetForm = () => {
   editingTemple.value = null
@@ -534,7 +491,6 @@ const resetForm = () => {
     establishedYear: '',
     deity: '',
     description: '',
-    status: 'Active'
   })
   templeFormRef.value?.resetFields()
 }
@@ -549,10 +505,17 @@ const handleCurrentChange = (val) => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadTemples()
   checkScreenSize()
   window.addEventListener('resize', handleResize)
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/temples')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/temples')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/temples')
+  }
 })
 
 onUnmounted(() => {

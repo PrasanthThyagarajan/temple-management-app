@@ -7,5 +7,6 @@ namespace TempleApi.Services
         Task<bool> CanConnectAsync();
         string GetDatabaseProvider();
         string GetConnectionString();
+        Task EnsureContributionTablesAsync();
     }
 }

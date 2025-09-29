@@ -12,24 +12,6 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="summary-card upcoming">
-          <el-statistic title="Upcoming Events" :value="summaryStats.upcoming">
-            <template #prefix>
-              <el-icon style="vertical-align: middle; color: #409eff;"><Clock /></el-icon>
-            </template>
-          </el-statistic>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card class="summary-card ongoing">
-          <el-statistic title="Ongoing Events" :value="summaryStats.ongoing">
-            <template #prefix>
-              <el-icon style="vertical-align: middle; color: #67c23a;"><VideoPlay /></el-icon>
-            </template>
-          </el-statistic>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
         <el-card class="summary-card">
           <el-statistic title="Filtered Results" :value="filteredBeforePagination.length">
             <template #prefix>
@@ -44,7 +26,7 @@
       <template #header>
         <div class="card-header">
           <h2>Event Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Event
           </el-button>
@@ -139,7 +121,6 @@
                   v-for="event in getEventsForDate(data.day)"
                   :key="event.id"
                   class="event-indicator"
-                  :class="getEventStatusClass(event.status)"
                   @click="viewEvent(event)"
                 >
                   {{ event.name }}
@@ -192,13 +173,6 @@
             </template>
           </el-table-column>
           
-          <el-table-column prop="status" label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="getStatusTagType(scope.row.status)">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column label="Type" width="160">
             <template #default="scope">
               <el-tag :type="getTypeTagType(scope.row.eventType?.name)">
@@ -206,9 +180,9 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="Actions" width="250" fixed="right">
+          <el-table-column label="Actions" width="250" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
-              <el-button size="small" @click.stop="editEvent(scope.row)">
+              <el-button size="small" @click.stop="editEvent(scope.row)" v-if="canUpdate">
                 <el-icon><Edit /></el-icon>
                 Edit
               </el-button>
@@ -234,6 +208,7 @@
                 size="small"
                 type="danger"
                 @click.stop="deleteEvent(scope.row.id)"
+                v-if="canDelete"
               >
                 <el-icon><Delete /></el-icon>
                 Delete
@@ -376,7 +351,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveEvent" :loading="saving">
+          <el-button type="primary" @click="saveEvent" :loading="saving" v-if="editingEvent ? canUpdate : canCreate">
             {{ editingEvent ? 'Update' : 'Create' }}
           </el-button>
         </span>
@@ -393,11 +368,6 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="Event Name">
             {{ selectedEvent.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="getStatusTagType(selectedEvent.status)">
-              {{ selectedEvent.status }}
-            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Area">{{ selectedEvent.area?.name }}</el-descriptions-item>
           <el-descriptions-item label="Type">
@@ -431,12 +401,13 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search, Refresh, Edit, Delete, Calendar, Clock, VideoPlay, Check, Close, Filter } from '@element-plus/icons-vue'
+import { Plus, Search, Edit, Delete, Calendar, Clock, VideoPlay, Check, Close, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
 import dayjs from 'dayjs'
 
 // Reactive data
 const events = ref([])
+const totalEvents = ref(0)
 const areas = ref([])
 const eventTypes = ref([])
 const loading = ref(false)
@@ -460,7 +431,6 @@ const eventForm = reactive({
   name: '',
   areaId: '',
   eventTypeId: '',
-  status: '',
   startDate: '',
   endDate: '',
   description: '',
@@ -476,7 +446,6 @@ const eventRules = {
   name: [{ required: true, message: 'Event name is required', trigger: 'blur' }],
   areaId: [{ required: true, message: 'Area is required', trigger: 'change' }],
   eventTypeId: [{ required: true, message: 'Event type is required', trigger: 'change' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }],
   startDate: [{ required: true, message: 'Start date is required', trigger: 'change' }],
   endDate: [{ required: true, message: 'End date is required', trigger: 'change' }],
   description: [{ required: true, message: 'Description is required', trigger: 'blur' }]
@@ -487,13 +456,25 @@ const eventFormRef = ref()
 // API base URL (use Vite proxy)
 const API_BASE = '/api'
 
+// Permissions for this page
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
+const refreshPermissions = async () => {
+  try {
+    if (window && window["templeAuth"]) {
+      canCreate.value = await window["templeAuth"].hasCreatePermission('/events')
+      canUpdate.value = await window["templeAuth"].hasUpdatePermission('/events')
+      canDelete.value = await window["templeAuth"].hasDeletePermission('/events')
+    }
+  } catch (_) { /* ignore */ }
+}
+
 // Summary Statistics
 const summaryStats = computed(() => {
   return {
-    total: events.value.length,
-    upcoming: events.value.filter(e => e.status === 'Upcoming').length,
-    ongoing: events.value.filter(e => e.status === 'Ongoing').length,
-    completed: events.value.filter(e => e.status === 'Completed').length
+    total: events.value.length
   }
 })
 
@@ -528,7 +509,7 @@ const filteredBeforePagination = computed(() => {
     result = result.filter(e => {
       const startDate = dayjs(e.startDate)
       const endDate = dayjs(e.endDate)
-      return filterDate.isBetween(startDate, endDate, 'day', '[]')
+      return filterDate.isAfter(startDate, 'day') && filterDate.isBefore(endDate, 'day') || filterDate.isSame(startDate, 'day') || filterDate.isSame(endDate, 'day')
     })
   }
   
@@ -649,7 +630,6 @@ const editEvent = (event) => {
     name: event.name,
     areaId: event.area?.id || '',
     eventTypeId: event.eventType?.id || '',
-    status: event.status || '',
     startDate: event.startDate,
     endDate: event.endDate,
     description: event.description,
@@ -743,7 +723,6 @@ const resetForm = () => {
     name: '',
     areaId: '',
     eventTypeId: '',
-    status: '',
     startDate: '',
     endDate: '',
     description: '',
@@ -766,15 +745,6 @@ const formatDateTime = (dateString) => {
   return dayjs(dateString).format('MMM DD, YYYY HH:mm')
 }
 
-const getStatusTagType = (status) => {
-  const statusMap = {
-    'Upcoming': 'primary',
-    'Ongoing': 'success',
-    'Completed': 'info',
-    'Cancelled': 'danger'
-  }
-  return statusMap[status] || 'info'
-}
 
 const getTypeTagType = (type) => {
   const typeMap = {
@@ -787,15 +757,6 @@ const getTypeTagType = (type) => {
   return typeMap[type] || 'default'
 }
 
-const getEventStatusClass = (status) => {
-  const classMap = {
-    'Upcoming': 'upcoming',
-    'Ongoing': 'ongoing',
-    'Completed': 'completed',
-    'Cancelled': 'cancelled'
-  }
-  return classMap[status] || 'default'
-}
 
 const getEventsForDate = (date) => {
   return events.value.filter(event => {
@@ -819,6 +780,7 @@ onMounted(async () => {
   await loadAreas()
   await loadEventTypes()
   await loadEvents()
+  await refreshPermissions()
 })
 </script>
 

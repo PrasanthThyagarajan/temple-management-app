@@ -44,7 +44,7 @@
       <template #header>
         <div class="card-header">
           <h2>Product Management</h2>
-          <el-button type="primary" @click="showCreateDialog = true">
+          <el-button type="primary" @click="showCreateDialog = true" v-if="canCreate">
             <el-icon><Plus /></el-icon>
             Add Product
           </el-button>
@@ -142,9 +142,6 @@
                 <h4>{{ product.name }}</h4>
                 <p class="product-category">{{ product.category || product.categoryNavigation?.name }}</p>
                 <p class="product-price">₹{{ product.price.toLocaleString() }}</p>
-                <el-tag :type="getStatusTagType(product.status)" size="small">
-                  {{ product.status }}
-                </el-tag>
                 <p class="product-stock">Stock: {{ product.stockQuantity }}</p>
               </div>
             </el-card>
@@ -192,18 +189,11 @@
           </el-table-column>
           <el-table-column prop="stockQuantity" label="Stock" width="80" />
           <el-table-column prop="minStockLevel" label="Min Stock" width="100" />
-          <el-table-column prop="status" label="Status" width="100">
-            <template #default="scope">
-              <el-tag :type="getStatusTagType(scope.row.status)" size="small">
-                {{ scope.row.status }}
-              </el-tag>
-            </template>
-          </el-table-column>
           <el-table-column prop="description" label="Description" min-width="200" show-overflow-tooltip />
-          <el-table-column label="Actions" width="200" fixed="right">
+          <el-table-column label="Actions" width="200" fixed="right" v-if="canUpdate || canDelete">
             <template #default="scope">
               <div class="action-buttons">
-                <el-button size="small" @click.stop="editProduct(scope.row)">
+                <el-button size="small" @click.stop="editProduct(scope.row)" v-if="canUpdate">
                   <el-icon><Edit /></el-icon>
                   <span class="btn-text">Edit</span>
                 </el-button>
@@ -211,7 +201,7 @@
                   size="small"
                   type="success"
                   @click.stop="updateProductStatus(scope.row.id, 'Active')"
-                  v-if="scope.row.status === 'Inactive'"
+                  v-if="scope.row.status === 'Inactive' && canUpdate"
                 >
                   <el-icon><Check /></el-icon>
                   <span class="btn-text">Activate</span>
@@ -220,7 +210,7 @@
                   size="small"
                   type="warning"
                   @click.stop="updateProductStatus(scope.row.id, 'Inactive')"
-                  v-if="scope.row.status === 'Active'"
+                  v-if="scope.row.status === 'Active' && canUpdate"
                 >
                   <el-icon><Close /></el-icon>
                   <span class="btn-text">Deactivate</span>
@@ -229,6 +219,7 @@
                   size="small"
                   type="danger"
                   @click.stop="deleteProduct(scope.row.id)"
+                  v-if="canDelete"
                 >
                   <el-icon><Delete /></el-icon>
                   <span class="btn-text">Delete</span>
@@ -316,13 +307,6 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="Status" prop="status">
-              <el-select v-model="productForm.status" placeholder="Select status" style="width: 100%">
-                <el-option label="Active" value="Active" />
-                <el-option label="Inactive" value="Inactive" />
-                <el-option label="Out of Stock" value="Out of Stock" />
-              </el-select>
-            </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="Description" prop="description">
@@ -345,7 +329,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showCreateDialog = false">Cancel</el-button>
-          <el-button type="primary" @click="saveProduct" :loading="saving">
+          <el-button type="primary" @click="saveProduct" :loading="saving" v-if="canCreate || canUpdate">
             {{ editingProduct ? 'Update' : 'Create' }}
           </el-button>
         </span>
@@ -363,11 +347,6 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="Product Name">
             {{ selectedProduct.name }}
-          </el-descriptions-item>
-          <el-descriptions-item label="Status">
-            <el-tag :type="getStatusTagType(selectedProduct.status)">
-              {{ selectedProduct.status }}
-            </el-tag>
           </el-descriptions-item>
           <el-descriptions-item label="Category">{{ selectedProduct.category }}</el-descriptions-item>
 
@@ -393,6 +372,11 @@ import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search, Refresh, Edit, Delete, Grid, Box, Check, Warning, Close, Filter } from '@element-plus/icons-vue'
 import axios from 'axios'
+
+// Permission states
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
 
 // Reactive data
 const products = ref([])
@@ -430,7 +414,6 @@ const productForm = reactive({
   price: 0,
   stockQuantity: 0,
   minStockLevel: 0,
-  status: 'Active',
   description: '',
   notes: ''
 })
@@ -442,7 +425,6 @@ const productRules = {
   price: [{ required: true, message: 'Price is required', trigger: 'blur' }],
   stockQuantity: [{ required: true, message: 'Stock quantity is required', trigger: 'blur' }],
   minStockLevel: [{ required: true, message: 'Minimum stock level is required', trigger: 'blur' }],
-  status: [{ required: true, message: 'Status is required', trigger: 'change' }],
   description: [{ required: true, message: 'Description is required', trigger: 'blur' }]
 }
 
@@ -455,10 +437,8 @@ const API_BASE = '/api'
 const summaryStats = computed(() => {
   return {
     total: products.value.length,
-    active: products.value.filter(p => p.status === 'Active').length,
-    outOfStock: products.value.filter(p => p.status === 'Out of Stock').length,
     lowStock: products.value.filter(p => 
-      p.status === 'Active' && p.stockQuantity <= p.minStockLevel
+      p.stockQuantity <= p.minStockLevel
     ).length
   }
 })
@@ -593,7 +573,6 @@ const editProduct = (product) => {
     price: product.price,
     stockQuantity: product.stockQuantity,
     minStockLevel: product.minStockLevel,
-    status: product.status,
     description: product.description,
     notes: product.notes
   })
@@ -684,7 +663,6 @@ const resetForm = () => {
     price: 0,
     stockQuantity: 0,
     minStockLevel: 0,
-    status: 'Active',
     description: '',
     notes: ''
   })
@@ -715,10 +693,17 @@ const handleResize = () => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   loadProducts()
   loadCategories()
   window.addEventListener('resize', handleResize)
+  
+  // Check permissions
+  if (window["templeAuth"]) {
+    canCreate.value = await window["templeAuth"].hasCreatePermission('/products')
+    canUpdate.value = await window["templeAuth"].hasUpdatePermission('/products')
+    canDelete.value = await window["templeAuth"].hasDeletePermission('/products')
+  }
 })
 
 onUnmounted(() => {

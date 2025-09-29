@@ -75,11 +75,75 @@ namespace TempleApi.Services
 
         public async Task<(Devotee Devotee, string? GeneratedPassword)> CreateDevoteeWithUserAsync(CreateDevoteeDto createDto)
         {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(createDto.Name))
+            {
+                throw new InvalidOperationException("Devotee name is required.");
+            }
+
+            if (createDto.TempleId <= 0)
+            {
+                throw new InvalidOperationException("Valid temple selection is required.");
+            }
+
+            // Check if temple exists
+            var templeExists = await _context.Temples.AnyAsync(t => t.Id == createDto.TempleId && t.IsActive);
+            if (!templeExists)
+            {
+                throw new InvalidOperationException("The specified temple does not exist or is inactive.");
+            }
+
             Devotee devotee;
             var password = null as string;
 
-            // Only proceed to create a user if email is present
-            if (!string.IsNullOrWhiteSpace(createDto.Email))
+            // If userId is provided, validate the user and email
+            if (createDto.UserId > 0)
+            {
+                var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.UserId == createDto.UserId);
+                if (existingUser == null)
+                {
+                    throw new InvalidOperationException("The specified user does not exist.");
+                }
+
+                // Check if user is active
+                if (!existingUser.IsActive)
+                {
+                    throw new InvalidOperationException("The specified user is not active.");
+                }
+
+                // Check if user is an admin
+                var isAdmin = await _context.UserRoles
+                    .Include(ur => ur.Role)
+                    .AnyAsync(ur => ur.UserId == createDto.UserId && 
+                                   ur.Role.RoleName == "Admin" && 
+                                   ur.IsActive);
+                if (isAdmin)
+                {
+                    throw new InvalidOperationException("Admin users cannot be registered as devotees. Admins have full control without being devotees.");
+                }
+
+                // Check if user is already linked to another devotee
+                var existingDevotee = await _context.Devotees.FirstOrDefaultAsync(d => d.UserId == createDto.UserId && d.IsActive);
+                if (existingDevotee != null)
+                {
+                    throw new InvalidOperationException($"This user is already registered as a devotee with ID {existingDevotee.Id}.");
+                }
+
+                // Validate email matches if both are provided
+                if (!string.IsNullOrWhiteSpace(createDto.Email) && 
+                    !string.Equals(existingUser.Email, createDto.Email, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("The provided email does not match the selected user's email.");
+                }
+
+                // Use the user's email if not provided
+                if (string.IsNullOrWhiteSpace(createDto.Email))
+                {
+                    createDto.Email = existingUser.Email;
+                }
+            }
+            // Only proceed to create a user if email is present and no userId provided
+            else if (!string.IsNullOrWhiteSpace(createDto.Email))
             {
                 // If a user with this email already exists, skip user creation
                 var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Email == createDto.Email);
@@ -132,7 +196,31 @@ namespace TempleApi.Services
                 }
                 else
                 {
-                    // User already exists, use their ID
+                    // User already exists, check if they are an admin
+                    var isAdmin = await _context.UserRoles
+                        .Include(ur => ur.Role)
+                        .AnyAsync(ur => ur.UserId == existingUser.UserId && 
+                                       ur.Role.RoleName == "Admin" && 
+                                       ur.IsActive);
+                    if (isAdmin)
+                    {
+                        throw new InvalidOperationException($"The user with email {createDto.Email} is an admin. Admin users cannot be registered as devotees.");
+                    }
+
+                    // Check if already linked to a devotee
+                    var existingDevotee = await _context.Devotees.FirstOrDefaultAsync(d => d.UserId == existingUser.UserId && d.IsActive);
+                    if (existingDevotee != null)
+                    {
+                        throw new InvalidOperationException($"A user with email {createDto.Email} is already registered as a devotee.");
+                    }
+                    
+                    // Check if user is active
+                    if (!existingUser.IsActive)
+                    {
+                        throw new InvalidOperationException("The user associated with this email is not active.");
+                    }
+                    
+                    // User exists and is not linked to any devotee, use their ID
                     createDto.UserId = existingUser.UserId;
                 }
             }
@@ -158,9 +246,65 @@ namespace TempleApi.Services
 
         public async Task<Devotee?> UpdateDevoteeAsync(int id, CreateDevoteeDto updateDto)
         {
+            // Validate input
+            if (string.IsNullOrWhiteSpace(updateDto.Name))
+            {
+                throw new InvalidOperationException("Devotee name is required.");
+            }
+
+            if (updateDto.TempleId <= 0)
+            {
+                throw new InvalidOperationException("Valid temple selection is required.");
+            }
+
             var devotee = await _context.Devotees.FindAsync(id);
             if (devotee == null || !devotee.IsActive)
                 return null;
+
+            // Check if temple exists
+            var templeExists = await _context.Temples.AnyAsync(t => t.Id == updateDto.TempleId && t.IsActive);
+            if (!templeExists)
+            {
+                throw new InvalidOperationException("The specified temple does not exist or is inactive.");
+            }
+
+            // If email is being changed, validate it
+            if (!string.IsNullOrWhiteSpace(updateDto.Email) && 
+                !string.Equals(devotee.Email, updateDto.Email, StringComparison.OrdinalIgnoreCase))
+            {
+                // Check if the new email belongs to an active user
+                var userWithEmail = await _context.Users.FirstOrDefaultAsync(u => u.Email == updateDto.Email);
+                if (userWithEmail != null)
+                {
+                    // Check if this user is already linked to another devotee
+                    var otherDevotee = await _context.Devotees.FirstOrDefaultAsync(d => 
+                        d.UserId == userWithEmail.UserId && 
+                        d.IsActive && 
+                        d.Id != id);
+                    
+                    if (otherDevotee != null)
+                    {
+                        throw new InvalidOperationException($"A user with email {updateDto.Email} is already registered as a devotee.");
+                    }
+
+                    // Check if user is active
+                    if (!userWithEmail.IsActive)
+                    {
+                        throw new InvalidOperationException("The user associated with this email is not active.");
+                    }
+
+                    // Check if user is an admin
+                    var isAdmin = await _context.UserRoles
+                        .Include(ur => ur.Role)
+                        .AnyAsync(ur => ur.UserId == userWithEmail.UserId && 
+                                       ur.Role.RoleName == "Admin" && 
+                                       ur.IsActive);
+                    if (isAdmin)
+                    {
+                        throw new InvalidOperationException($"The user with email {updateDto.Email} is an admin. Admin users cannot be registered as devotees.");
+                    }
+                }
+            }
 
             devotee.FullName = updateDto.Name;
             devotee.Email = updateDto.Email ?? string.Empty;
@@ -171,6 +315,7 @@ namespace TempleApi.Services
             devotee.PostalCode = updateDto.PostalCode ?? string.Empty;
             devotee.DateOfBirth = updateDto.DateOfBirth;
             devotee.Gender = updateDto.Gender ?? string.Empty;
+            devotee.TempleId = updateDto.TempleId;
             devotee.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

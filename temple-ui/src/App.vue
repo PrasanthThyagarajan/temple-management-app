@@ -30,51 +30,55 @@
             </el-menu-item>
 
             <!-- Events (moved to main header) -->
-            <el-sub-menu v-if="isAuthenticated" index="events">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/events') || isMenuVisible('/event-expenses') || isMenuVisible('/event-expense-items') || isMenuVisible('/event-expense-services') || isMenuVisible('/vouchers'))" index="events">
               <template #title>
                 <el-icon><Calendar /></el-icon>
                 <span>Events</span>
               </template>
-              <el-menu-item index="/events">
+              <el-menu-item v-if="isMenuVisible('/events')" index="/events">
                 <el-icon><Calendar /></el-icon> 
                 <span>Events</span>
               </el-menu-item>
-              <el-menu-item index="/event-expenses">
+              <el-menu-item v-if="isMenuVisible('/event-expenses')" index="/event-expenses">
                 <el-icon><ShoppingCart /></el-icon>
                 <span>Event Expenses</span>
               </el-menu-item>
-              <el-menu-item index="/event-expense-items">
+              <el-menu-item v-if="isMenuVisible('/event-expense-items')" index="/event-expense-items">
                 <el-icon><Box /></el-icon>
                 <span>Expense Items</span>
               </el-menu-item>
-              <el-menu-item index="/event-expense-services">
+              <el-menu-item v-if="isMenuVisible('/event-expense-services')" index="/event-expense-services">
                 <el-icon><Setting /></el-icon>
                 <span>Expense Services</span>
               </el-menu-item>
-              <el-menu-item index="/vouchers">
+              <el-menu-item v-if="isMenuVisible('/vouchers')" index="/vouchers">
                 <el-icon><Tickets /></el-icon>
                 <span>Vouchers</span>
               </el-menu-item>
             </el-sub-menu>
 
             <!-- Management (updated) -->
-            <el-sub-menu v-if="isAuthenticated" index="management">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/devotees') || isMenuVisible('/donations') || isMenuVisible('/contributions'))" index="management">
               <template #title>
                 <el-icon><Collection /></el-icon>
                 <span>Management</span>
               </template>
-              <el-menu-item index="/devotees">
+              <el-menu-item v-if="isMenuVisible('/devotees')" index="/devotees">
                 <el-icon><User /></el-icon>
                 <span>Devotees</span>
               </el-menu-item>
-              <el-menu-item index="/donations">
+              <el-menu-item v-if="isMenuVisible('/donations')" index="/donations">
                 <el-icon><Money /></el-icon>
                 <span>Donations</span>
+              </el-menu-item>
+              <el-menu-item v-if="isMenuVisible('/contributions')" index="/contributions">
+                <el-icon><CreditCard /></el-icon>
+                <span>Contributions</span>
               </el-menu-item>
             </el-sub-menu>
 
             <!-- Administration -->
-            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/temples') || isMenuVisible('/areas') || isMenuVisible('/admin/users') || isMenuVisible('/roles') || isMenuVisible('/user-roles') || isMenuVisible('/admin/role-permissions'))" index="administration">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/temples') || isMenuVisible('/areas') || isMenuVisible('/admin/users') || isMenuVisible('/roles') || isMenuVisible('/user-roles') || isMenuVisible('/admin/role-permissions') || isMenuVisible('/contribution-settings'))" index="administration">
               <template #title>
                 <el-icon><Setting /></el-icon>
                 <span>Administration</span>
@@ -103,23 +107,27 @@
                 <el-icon><Star /></el-icon>
                 <span>Role Permissions</span>
               </el-menu-item>
+              <el-menu-item v-if="isMenuVisible('/contribution-settings')" index="/contribution-settings">
+                <el-icon><Money /></el-icon>
+                <span>Contribution Settings</span>
+              </el-menu-item>
             </el-sub-menu>
 
             <!-- Shop (moved to main header, as submenu group) -->
-            <el-sub-menu v-if="isAuthenticated" index="main-shop">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/products') || isMenuVisible('/categories') || isMenuVisible('/sales'))" index="main-shop">
               <template #title>
                 <el-icon><Shop /></el-icon>
                 <span>Shop</span>
               </template>
-              <el-menu-item index="/products">
+              <el-menu-item v-if="isMenuVisible('/products')" index="/products">
                 <el-icon><Box /></el-icon>
                 <span>Products</span>
               </el-menu-item>
-              <el-menu-item index="/categories">
+              <el-menu-item v-if="isMenuVisible('/categories')" index="/categories">
                 <el-icon><Collection /></el-icon>
                 <span>Categories</span>
               </el-menu-item>
-              <el-menu-item index="/sales">
+              <el-menu-item v-if="isMenuVisible('/sales')" index="/sales">
                 <el-icon><ShoppingCart /></el-icon>
                 <span>Sales</span>
               </el-menu-item>
@@ -188,7 +196,8 @@ import {
   House,
   Tickets,
   ArrowDown,
-  SwitchButton
+  SwitchButton,
+  CreditCard
 } from '@element-plus/icons-vue'
 import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -261,12 +270,14 @@ const menuPermissions = ref({
   '/vouchers': false,
   '/devotees': false,
   '/donations': false,
+  '/contributions': false,
   '/temples': false,
   '/areas': false,
   '/admin/users': false,
   '/roles': false,
   '/user-roles': false,
   '/admin/role-permissions': false,
+  '/contribution-settings': false,
   '/products': false,
   '/categories': false,
   '/sales': false

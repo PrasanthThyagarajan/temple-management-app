@@ -10,6 +10,7 @@ using TempleApi.Security;
 using Serilog;
 using TempleApi.Data;
 using TempleApi.Repositories.Interfaces;
+using TempleApi.Repositories;
 using TempleApi.Domain.Entities;
 using TempleApi.Services;
 using TempleApi.Services.Interfaces;
@@ -158,12 +159,19 @@ builder.Services.AddScoped<IExpenseService, TempleApi.Services.ExpenseService>()
 builder.Services.AddScoped<IEventExpenseService, EventExpenseService>();
 builder.Services.AddScoped<IExpenseServiceService, TempleApi.Services.ExpenseServiceService>();
 builder.Services.AddScoped<IVoucherService, VoucherService>();
+builder.Services.AddScoped<IContributionSettingRepository, ContributionSettingRepository>();
+builder.Services.AddScoped<IContributionSettingService, ContributionSettingService>();
+builder.Services.AddScoped<IContributionRepository, ContributionRepository>();
+builder.Services.AddScoped<IContributionService, ContributionService>();
 
 // Jyotisham API service
 builder.Services.AddHttpClient<IJyotishamApiService, JyotishamApiService>();
 
 // Data seeding service
 builder.Services.AddScoped<DataSeedingService>();
+
+// Database migration service
+builder.Services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -308,6 +316,11 @@ SeedData:
         var dataSeedingService = scope.ServiceProvider.GetRequiredService<DataSeedingService>();
         await dataSeedingService.SeedDataAsync();
         logger.LogInformation("Initial data seeded successfully");
+        
+        // Ensure Contribution tables exist
+        var migrationService = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
+        await migrationService.EnsureContributionTablesAsync();
+        logger.LogInformation("Contribution tables ensured");
     }
     catch (Exception ex)
     {

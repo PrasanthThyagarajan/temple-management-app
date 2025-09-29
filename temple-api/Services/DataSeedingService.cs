@@ -83,6 +83,7 @@ namespace TempleApi.Services
                 new { Name = "Devotees", Url = "/devotees" },
                 new { Name = "Donations", Url = "/donations" },
                 new { Name = "Events", Url = "/events" },
+                new { Name = "Contributions", Url = "/contributions" },
                 new { Name = "Categories", Url = "/categories" },
                 new { Name = "Products", Url = "/products" },
                 new { Name = "Sales", Url = "/sales" },
@@ -99,6 +100,7 @@ namespace TempleApi.Services
                 new { Name = "UserRoleConfiguration", Url = "/user-roles" },
                 new { Name = "UserRegistration", Url = "/register" },
                 new { Name = "AdminUserManagement", Url = "/admin/users" },
+                new { Name = "ContributionSettings", Url = "/contribution-settings" },
 
                 // Additional Routes
                 new { Name = "Verify", Url = "/verify" },

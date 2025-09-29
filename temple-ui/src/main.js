@@ -356,6 +356,38 @@ const initApp = async () => {
   getCurrentPermissions: () => currentPermissions,
   hasRole: (roleName) => currentUser?.roles?.includes(roleName) || false,
   hasPermission: (permissionName) => currentPermissions?.includes(permissionName) || false,
+  hasPagePermission: async (pageUrl, permissionName) => {
+    const userRoles = currentUser?.roles || []
+    if (userRoles.length === 0) return false
+    if (userRoles.includes('Admin')) return true
+
+    // Use cached permissions if available
+    if (window.rolePermissionsCache) {
+      return window.rolePermissionsCache.some(rp => 
+        userRoles.includes(rp.roleName) && 
+        rp.pageUrl === pageUrl && 
+        rp.permissionName === permissionName
+      )
+    }
+
+    try {
+      const response = await axios.get('/api/admin/role-permissions')
+      if (response.data && Array.isArray(response.data)) {
+        window.rolePermissionsCache = response.data
+        return response.data.some(rp => 
+          userRoles.includes(rp.roleName) && 
+          rp.pageUrl === pageUrl && 
+          rp.permissionName === permissionName
+        )
+      }
+    } catch (error) {
+      console.error('Error checking page permission:', error)
+    }
+    return false
+  },
+  hasCreatePermission: async (pageUrl) => (window["templeAuth"].hasPagePermission(pageUrl, 'Create')),
+  hasUpdatePermission: async (pageUrl) => (window["templeAuth"].hasPagePermission(pageUrl, 'Update')),
+  hasDeletePermission: async (pageUrl) => (window["templeAuth"].hasPagePermission(pageUrl, 'Delete')),
   hasPageReadPermission: async (pageUrl) => {
     // Check if user has read permission for a specific page
     const userRoles = currentUser?.roles || []

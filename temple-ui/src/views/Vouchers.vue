@@ -1,7 +1,21 @@
 <template>
   <div class="vouchers-container">
-    <!-- Enhanced Summary Cards -->
-    <el-row :gutter="20" class="summary-cards">
+    <!-- Loading State for Permission Check -->
+    <el-card v-if="permissionLoading" class="loading-card">
+      <el-skeleton :rows="5" animated />
+    </el-card>
+
+    <!-- No Permission State -->
+    <el-card v-else-if="!canRead" class="no-permission-card">
+      <el-empty description="You do not have permission to view this page">
+        <el-button @click="router.push('/dashboard')">Back to Dashboard</el-button>
+      </el-empty>
+    </el-card>
+
+    <!-- Main Content (only shown if user has read permission) -->
+    <template v-else>
+      <!-- Enhanced Summary Cards -->
+      <el-row :gutter="20" class="summary-cards">
       <el-col :xs="24" :sm="12" :md="6">
         <el-card class="summary-card">
           <el-statistic title="Total Vouchers" :value="summaryStats.total">
@@ -305,7 +319,7 @@
               <span v-else class="text-muted">—</span>
             </template>
           </el-table-column>
-          <el-table-column label="Actions" width="120" fixed="right">
+          <el-table-column label="Actions" width="120" fixed="right" v-if="canUpdate || auth.hasPermission('ExpenseApproval') || auth.hasRole('Admin')">
             <template #default="scope">
               <el-button
                 v-if="!scope.row.isApproved && canApprove(scope.row)"
@@ -467,11 +481,13 @@
         <el-empty description="No vouchers found" />
       </div>
     </el-card>
+    </template>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Grid, Box, Check, Search, Tickets, Clock, Money } from '@element-plus/icons-vue'
 import axios from 'axios'
@@ -479,11 +495,20 @@ import { useAuth } from '@/stores/auth'
 
 // Data
 const auth = useAuth()
+const router = useRouter()
+
+// Permission states
+const canRead = ref(true) // Default to true to avoid flash, will be checked in onMounted
+const canCreate = ref(false)
+const canUpdate = ref(false)
+const canDelete = ref(false)
+
 const vouchers = ref([])
 const events = ref([])
 const expenses = ref([])
 const expenseServices = ref([])
 const loading = ref(false)
+const permissionLoading = ref(true) // Loading state for permission check
 const viewMode = ref('table') // 'table' or 'cards'
 const approvingIds = ref([])
 
@@ -734,7 +759,7 @@ const formatDate = (dateString) => {
 const canApprove = (voucher) => {
   // Check if user has permission to approve
   // This should be based on the approval role configuration
-  return auth.hasPermission('ExpenseApproval') || auth.hasRole('Admin')
+  return canUpdate.value || auth.hasPermission('ExpenseApproval') || auth.hasRole('Admin')
 }
 
 const approveVoucher = async (voucher) => {
@@ -811,14 +836,46 @@ const filterVouchers = () => {
 }
 
 // Lifecycle
-onMounted(() => {
-  loadVouchers()
+onMounted(async () => {
+  try {
+    // Check permissions
+    if (window["templeAuth"]) {
+      canRead.value = await window["templeAuth"].hasPagePermission('/vouchers', 'Read')
+      canCreate.value = await window["templeAuth"].hasCreatePermission('/vouchers')
+      canUpdate.value = await window["templeAuth"].hasUpdatePermission('/vouchers')
+      canDelete.value = await window["templeAuth"].hasDeletePermission('/vouchers')
+    } else {
+      // If auth system is not available, assume no permissions
+      canRead.value = false
+    }
+  } catch (error) {
+    console.error('Error checking permissions:', error)
+    canRead.value = false
+  } finally {
+    permissionLoading.value = false
+  }
+  
+  // Only load vouchers if user has read permission
+  if (canRead.value) {
+    loadVouchers()
+  }
 })
 </script>
 
 <style scoped>
 .vouchers-container {
   padding: 20px;
+}
+
+.loading-card {
+  margin-top: 20px;
+  padding: 20px;
+}
+
+.no-permission-card {
+  margin-top: 20px;
+  text-align: center;
+  padding: 40px;
 }
 
 .summary-cards {

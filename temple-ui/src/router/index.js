@@ -19,6 +19,8 @@ import EventExpenses from '../views/EventExpenses.vue';
 import EventExpenseItems from '../views/EventExpenseItems.vue';
 import EventExpenseServices from '../views/EventExpenseServices.vue';
 import Vouchers from '../views/Vouchers.vue';
+import ContributionSettings from '../views/ContributionSettings.vue';
+import Contributions from '../views/Contributions.vue';
 import ApiTest from '../views/ApiTest.vue';
 import UserProfile from '../views/UserProfile.vue';
 
@@ -127,6 +129,16 @@ const routes = [
     name: 'Vouchers',
     component: Vouchers,
     meta: { requiresPermission: 'ExpenseApproval' }
+  },
+  {
+    path: '/contribution-settings',
+    name: 'ContributionSettings',
+    component: ContributionSettings
+  },
+  {
+    path: '/contributions',
+    name: 'Contributions',
+    component: Contributions
   },
   {
     path: '/manage-Expenses',
