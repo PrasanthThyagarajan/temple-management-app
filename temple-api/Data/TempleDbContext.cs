@@ -40,6 +40,7 @@ namespace TempleApi.Data
         public DbSet<Voucher> Vouchers { get; set; }
         public DbSet<ContributionSetting> ContributionSettings { get; set; }
         public DbSet<Contribution> Contributions { get; set; }
+        public DbSet<Inventory> Inventories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -71,6 +72,7 @@ namespace TempleApi.Data
             modelBuilder.Entity<EventApprovalRoleConfiguration>().ToTable("EventApprovalRoleConfigurations");
             modelBuilder.Entity<ContributionSetting>().ToTable("ContributionSettings");
             modelBuilder.Entity<Contribution>().ToTable("Contributions");
+            modelBuilder.Entity<Inventory>().ToTable("Inventories");
             modelBuilder.Entity<EventApprovalRoleConfiguration>(entity =>
             {
                 entity.Property(e => e.EventId).IsRequired();
@@ -123,6 +125,26 @@ namespace TempleApi.Data
                 entity.HasOne(e => e.ContributionSetting)
                     .WithMany()
                     .HasForeignKey(e => e.ContributionSettingId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Inventory configuration
+            modelBuilder.Entity<Inventory>(entity =>
+            {
+                entity.Property(e => e.ItemName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.ItemWorth).IsRequired();
+                entity.Property(e => e.ApproximatePrice).HasColumnType("decimal(10,2)");
+                entity.Property(e => e.Quantity).IsRequired();
+                entity.Property(e => e.Active).IsRequired().HasDefaultValue(true);
+                
+                entity.HasOne(e => e.Temple)
+                    .WithMany()
+                    .HasForeignKey(e => e.TempleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                    
+                entity.HasOne(e => e.Area)
+                    .WithMany()
+                    .HasForeignKey(e => e.AreaId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

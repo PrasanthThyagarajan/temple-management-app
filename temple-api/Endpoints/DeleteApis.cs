@@ -302,5 +302,26 @@ public static class DeleteApis
         }).RequireAuthorization();
 
         #endregion
+
+        #region Inventory Management Delete Endpoints
+
+        app.MapDelete("/api/inventories/{id}", async (int id, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var result = await inventoryService.DeleteAsync(id);
+                if (!result)
+                    return Results.NotFound();
+                
+                return Results.Ok(new { message = "Inventory item deleted successfully" });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error deleting inventory {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
     }
 }

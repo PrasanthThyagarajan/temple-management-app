@@ -1370,6 +1370,125 @@ public static class ReadApis
 
         #endregion
 
+        #region Inventory Management Read Endpoints
+
+        app.MapGet("/api/inventories", async (IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventories = await inventoryService.GetAllAsync();
+                return Results.Ok(inventories);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting all inventories");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/{id}", async (int id, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventory = await inventoryService.GetByIdAsync(id);
+                if (inventory == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(inventory);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting inventory with id {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/temple/{templeId}", async (int templeId, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventories = await inventoryService.GetByTempleIdAsync(templeId);
+                return Results.Ok(inventories);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting inventories for temple {TempleId}", templeId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/area/{areaId}", async (int areaId, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventories = await inventoryService.GetByAreaIdAsync(areaId);
+                return Results.Ok(inventories);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting inventories for area {AreaId}", areaId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/worth/{itemWorth}", async (ItemWorth itemWorth, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventories = await inventoryService.GetByItemWorthAsync(itemWorth);
+                return Results.Ok(inventories);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting inventories by worth {ItemWorth}", itemWorth);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/active", async (IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventories = await inventoryService.GetActiveItemsAsync();
+                return Results.Ok(inventories);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting active inventories");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/area/{areaId}/value", async (int areaId, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var totalValue = await inventoryService.GetTotalValueByAreaAsync(areaId);
+                return Results.Ok(new { areaId, totalValue });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting total value for area {AreaId}", areaId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        app.MapGet("/api/inventories/temple/{templeId}/quantity", async (int templeId, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var totalQuantity = await inventoryService.GetTotalQuantityByTempleAsync(templeId);
+                return Results.Ok(new { templeId, totalQuantity });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting total quantity for temple {TempleId}", templeId);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
+
         #region Health Check
 
         app.MapGet("/health", () => Results.Ok(new { status = "Healthy", timestamp = DateTime.UtcNow }));

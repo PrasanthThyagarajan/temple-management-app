@@ -73,7 +73,7 @@ namespace TempleApi.Tests
 
             var devotee = new Devotee
             {
-                Name = "Test Devotee",
+                FullName = "Test Devotee",
                 Email = "test@example.com",
                 Phone = "1234567890",
                 Address = "Test Address",

@@ -554,6 +554,28 @@ public static class CreateApis
         }).RequireAuthorization();
 
         #endregion
+
+        #region Inventory Management Create Endpoints
+
+        app.MapPost("/api/inventories", async (CreateInventoryDto createDto, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventory = await inventoryService.CreateAsync(createDto);
+                return Results.Created($"/api/inventories/{inventory.Id}", inventory);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error creating inventory item");
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
     }
 
     public record EmailSendRequest(string To, string Subject, string Body);

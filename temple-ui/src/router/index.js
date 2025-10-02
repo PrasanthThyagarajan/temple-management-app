@@ -23,6 +23,7 @@ import ContributionSettings from '../views/ContributionSettings.vue';
 import Contributions from '../views/Contributions.vue';
 import ApiTest from '../views/ApiTest.vue';
 import UserProfile from '../views/UserProfile.vue';
+import Inventory from '../views/Inventory.vue';
 
 const routes = [
   {
@@ -34,6 +35,11 @@ const routes = [
     path: '/areas',
     name: 'Areas',
     component: Areas
+  },
+  {
+    path: '/inventories',
+    name: 'Inventory',
+    component: Inventory
   },
   {
     path: '/admin/role-permissions',

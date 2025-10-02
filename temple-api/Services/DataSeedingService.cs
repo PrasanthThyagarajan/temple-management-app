@@ -87,6 +87,7 @@ namespace TempleApi.Services
                 new { Name = "Categories", Url = "/categories" },
                 new { Name = "Products", Url = "/products" },
                 new { Name = "Sales", Url = "/sales" },
+                new { Name = "Inventory", Url = "/inventories" },
 
                 // Event Expense Management
                 new { Name = "EventExpenses", Url = "/event-expenses" },

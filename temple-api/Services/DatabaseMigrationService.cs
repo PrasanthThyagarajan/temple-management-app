@@ -90,6 +90,56 @@ namespace TempleApi.Services
             return _databaseSettings.ConnectionString;
         }
 
+        public async Task EnsureInventoryTablesAsync()
+        {
+            try
+            {
+                _logger.LogInformation("Ensuring Inventory tables exist");
+                
+                // Create Inventories table if it doesn't exist
+                var createInventoriesTable = @"
+                    CREATE TABLE IF NOT EXISTS ""Inventories"" (
+                        ""Id"" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                        ""TempleId"" INTEGER NOT NULL,
+                        ""AreaId"" INTEGER NOT NULL,
+                        ""ItemName"" TEXT NOT NULL,
+                        ""ItemWorth"" INTEGER NOT NULL,
+                        ""ApproximatePrice"" DECIMAL(10,2) NOT NULL,
+                        ""Quantity"" INTEGER NOT NULL,
+                        ""CreatedDate"" TEXT NOT NULL,
+                        ""Active"" INTEGER NOT NULL DEFAULT 1,
+                        ""CreatedAt"" TEXT NOT NULL,
+                        ""UpdatedAt"" TEXT,
+                        ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                        CONSTRAINT ""FK_Inventories_Temples_TempleId"" FOREIGN KEY (""TempleId"") REFERENCES ""Temples"" (""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_Inventories_Areas_AreaId"" FOREIGN KEY (""AreaId"") REFERENCES ""Areas"" (""Id"") ON DELETE CASCADE
+                    );";
+
+                await _context.Database.ExecuteSqlRawAsync(createInventoriesTable);
+                _logger.LogInformation("Inventories table created or already exists");
+
+                // Create indexes
+                var createInventoryIndexes = new[]
+                {
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Inventories_TempleId"" ON ""Inventories"" (""TempleId"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Inventories_AreaId"" ON ""Inventories"" (""AreaId"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Inventories_ItemWorth"" ON ""Inventories"" (""ItemWorth"");",
+                    @"CREATE INDEX IF NOT EXISTS ""IX_Inventories_Active"" ON ""Inventories"" (""Active"");"
+                };
+
+                foreach (var indexSql in createInventoryIndexes)
+                {
+                    await _context.Database.ExecuteSqlRawAsync(indexSql);
+                }
+                _logger.LogInformation("Inventory table indexes created");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error ensuring Inventory tables");
+                throw;
+            }
+        }
+
         public async Task EnsureContributionTablesAsync()
         {
             try

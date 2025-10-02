@@ -520,5 +520,31 @@ public static class EditApis
         }).RequireAuthorization();
 
         #endregion
+
+        #region Inventory Management Edit Endpoints
+
+        app.MapPut("/api/inventories/{id}", async (int id, CreateInventoryDto updateDto, IInventoryService inventoryService) =>
+        {
+            try
+            {
+                var inventory = await inventoryService.UpdateAsync(id, updateDto);
+                if (inventory == null)
+                    return Results.NotFound();
+                
+                return Results.Ok(inventory);
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warning(ex, "Validation error updating inventory {Id}", id);
+                return Results.BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error updating inventory {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        }).RequireAuthorization();
+
+        #endregion
     }
 }

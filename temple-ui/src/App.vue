@@ -78,7 +78,7 @@
             </el-sub-menu>
 
             <!-- Administration -->
-            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/temples') || isMenuVisible('/areas') || isMenuVisible('/admin/users') || isMenuVisible('/roles') || isMenuVisible('/user-roles') || isMenuVisible('/admin/role-permissions') || isMenuVisible('/contribution-settings'))" index="administration">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/temples') || isMenuVisible('/areas') || isMenuVisible('/inventories') || isMenuVisible('/admin/users') || isMenuVisible('/roles') || isMenuVisible('/user-roles') || isMenuVisible('/admin/role-permissions') || isMenuVisible('/contribution-settings'))" index="administration">
               <template #title>
                 <el-icon><Setting /></el-icon>
                 <span>Administration</span>
@@ -90,6 +90,10 @@
               <el-menu-item v-if="isMenuVisible('/areas')" index="/areas">
                 <el-icon><OfficeBuilding /></el-icon>
                 <span>Areas</span>
+              </el-menu-item>
+              <el-menu-item v-if="isMenuVisible('/inventories')" index="/inventories">
+                <el-icon><Box /></el-icon>
+                <span>Inventory</span>
               </el-menu-item>
               <el-menu-item v-if="isMenuVisible('/admin/users')" index="/admin/users">
                 <el-icon><User /></el-icon>
@@ -273,6 +277,7 @@ const menuPermissions = ref({
   '/contributions': false,
   '/temples': false,
   '/areas': false,
+  '/inventories': false,
   '/admin/users': false,
   '/roles': false,
   '/user-roles': false,

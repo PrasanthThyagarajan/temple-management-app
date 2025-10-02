@@ -8,5 +8,6 @@ namespace TempleApi.Services
         string GetDatabaseProvider();
         string GetConnectionString();
         Task EnsureContributionTablesAsync();
+        Task EnsureInventoryTablesAsync();
     }
 }

@@ -164,6 +164,10 @@ builder.Services.AddScoped<IContributionSettingService, ContributionSettingServi
 builder.Services.AddScoped<IContributionRepository, ContributionRepository>();
 builder.Services.AddScoped<IContributionService, ContributionService>();
 
+// Register Inventory services
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IRepository<Inventory>, TempleApi.Repositories.Repository<Inventory>>();
+
 // Jyotisham API service
 builder.Services.AddHttpClient<IJyotishamApiService, JyotishamApiService>();
 
@@ -321,6 +325,10 @@ SeedData:
         var migrationService = scope.ServiceProvider.GetRequiredService<IDatabaseMigrationService>();
         await migrationService.EnsureContributionTablesAsync();
         logger.LogInformation("Contribution tables ensured");
+        
+        // Ensure Inventory tables exist
+        await migrationService.EnsureInventoryTablesAsync();
+        logger.LogInformation("Inventory tables ensured");
     }
     catch (Exception ex)
     {
