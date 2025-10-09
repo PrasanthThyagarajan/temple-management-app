@@ -372,6 +372,24 @@ public static class CreateApis
 
         #endregion
 
+        #region Booking Create Endpoints
+
+        app.MapPost("/api/bookings", async (CreateBookingDto dto, IBookingService bookingService) =>
+        {
+            try
+            {
+                var created = await bookingService.CreateAsync(dto);
+                return Results.Created($"/api/bookings/{created.Id}", created);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error creating booking");
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        #endregion
+
         #region Pooja Management Create Endpoints
 
         app.MapPost("/api/poojas", async (CreatePoojaDto createDto, IPoojaService poojaService) =>

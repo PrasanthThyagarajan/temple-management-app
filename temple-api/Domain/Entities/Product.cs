@@ -10,6 +10,7 @@ namespace TempleApi.Domain.Entities
         public decimal Price { get; set; }
         public string Description { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;
+        public bool IsPreBookingAvailable { get; set; }
 
         // Navigation properties
         public virtual Category? CategoryNavigation { get; set; }

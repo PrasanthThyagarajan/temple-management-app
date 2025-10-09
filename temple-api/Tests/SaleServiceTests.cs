@@ -57,12 +57,15 @@ namespace TempleApi.Tests
             {
                 UserId = 1,
                 StaffId = 2,
+                ProductId = 1,
                 SaleDate = DateTime.Now,
                 TotalAmount = 20.00m,
                 DiscountAmount = 2.00m,
                 FinalAmount = 18.00m,
                 PaymentMethod = "Cash",
                 Status = "Completed",
+                SalesBookingStatusId = (int)TempleApi.Enums.SalesBookingStatus.Awaiting,
+                BookingToken = "token-123",
                 Notes = "Test sale",
                 SaleItems = new List<CreateSaleItemDto>
                 {
@@ -89,12 +92,15 @@ namespace TempleApi.Tests
                 Id = 1,
                 UserId = 1,
                 StaffId = 2,
+                ProductId = 1,
                 SaleDate = createSaleDto.SaleDate,
                 TotalAmount = 20.00m,
                 DiscountAmount = 2.00m,
                 FinalAmount = 18.00m,
                 PaymentMethod = "Cash",
                 IsActive = true,
+                SalesBookingStatusId = (int)TempleApi.Enums.SalesBookingStatus.Awaiting,
+                BookingToken = string.Empty,
                 Notes = "Test sale",
                 Customer = customer,
                 Staff = staff,
@@ -128,6 +134,8 @@ namespace TempleApi.Tests
             result.Status.Should().Be("Completed");
             result.CustomerName.Should().Be("Customer");
             result.StaffName.Should().Be("Staff");
+            result.ProductId.Should().Be(1);
+            result.SalesBookingStatusId.Should().Be((int)TempleApi.Enums.SalesBookingStatus.Awaiting);
         }
 
         [Fact]
@@ -453,12 +461,15 @@ namespace TempleApi.Tests
             {
                 UserId = 1,
                 StaffId = 2,
+                ProductId = 1,
                 SaleDate = DateTime.Now,
                 TotalAmount = 25.00m,
                 DiscountAmount = 3.00m,
                 FinalAmount = 22.00m,
                 PaymentMethod = "Card",
                 Status = "Completed",
+                SalesBookingStatusId = (int)TempleApi.Enums.SalesBookingStatus.InProgress,
+                BookingToken = "token-xyz",
                 Notes = "Updated sale",
                 SaleItems = new List<CreateSaleItemDto>()
             };
@@ -471,12 +482,14 @@ namespace TempleApi.Tests
                 Id = 1,
                 UserId = 1,
                 StaffId = 2,
+                ProductId = 1,
                 SaleDate = updateDto.SaleDate,
                 TotalAmount = 25.00m,
                 DiscountAmount = 3.00m,
                 FinalAmount = 22.00m,
                 PaymentMethod = "Card",
                 IsActive = true,
+                SalesBookingStatusId = (int)TempleApi.Enums.SalesBookingStatus.InProgress,
                 Notes = "Updated sale",
                 Customer = new User { UserId = 1, Username = "customer", FullName = "Customer" },
                 Staff = new User { UserId = 2, Username = "staff", FullName = "Staff" },
@@ -493,6 +506,8 @@ namespace TempleApi.Tests
             result.TotalAmount.Should().Be(25.00m);
             result.FinalAmount.Should().Be(22.00m);
             result.PaymentMethod.Should().Be("Card");
+            result.ProductId.Should().Be(1);
+            result.SalesBookingStatusId.Should().Be((int)TempleApi.Enums.SalesBookingStatus.InProgress);
         }
 
         [Fact]
@@ -536,6 +551,30 @@ namespace TempleApi.Tests
 
             // Assert
             result.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task VerifySaleBookingAsync_ShouldVerifyAndClearToken_WhenValid()
+        {
+            // Arrange
+            var sale = new Sale
+            {
+                Id = 1,
+                UserId = 1,
+                StaffId = 2,
+                SalesBookingStatusId = (int)TempleApi.Enums.SalesBookingStatus.Awaiting,
+                BookingToken = "book-123",
+                IsActive = true
+            };
+
+            _saleRepositoryMock.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Sale> { sale });
+            _saleRepositoryMock.Setup(x => x.UpdateAsync(It.IsAny<Sale>())).Returns(Task.CompletedTask);
+
+            // Act
+            var ok = await _saleService.VerifySaleBookingAsync("book-123");
+
+            // Assert
+            ok.Should().BeTrue();
         }
 
         [Fact]

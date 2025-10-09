@@ -41,6 +41,7 @@ namespace TempleApi.Data
         public DbSet<ContributionSetting> ContributionSettings { get; set; }
         public DbSet<Contribution> Contributions { get; set; }
         public DbSet<Inventory> Inventories { get; set; }
+        public DbSet<Booking> Bookings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -66,6 +67,7 @@ namespace TempleApi.Data
             modelBuilder.Entity<SaleItem>().ToTable("SaleItems");
             modelBuilder.Entity<Pooja>().ToTable("Poojas");
             modelBuilder.Entity<PoojaBooking>().ToTable("PoojaBookings");
+            modelBuilder.Entity<Booking>().ToTable("Bookings");
             modelBuilder.Entity<Expense>().ToTable("Expenses");
             modelBuilder.Entity<ExpenseService>().ToTable("ExpenseServices");
             modelBuilder.Entity<ExpenseApprovalRoleConfiguration>().ToTable("ExpenseApprovalRoleConfigurations");
@@ -361,6 +363,7 @@ namespace TempleApi.Data
                 entity.Property(e => e.MinStockLevel).HasDefaultValue(0);
                 entity.Property(e => e.Description).HasColumnType("TEXT");
                 entity.Property(e => e.Notes).HasColumnType("TEXT");
+                entity.Property(e => e.IsPreBookingAvailable).HasDefaultValue(false);
                 
                 entity.HasOne(e => e.CategoryNavigation)
                     .WithMany(e => e.Products)
@@ -379,6 +382,8 @@ namespace TempleApi.Data
                 entity.Property(e => e.PaymentMethod).HasMaxLength(50);
                 entity.Property(e => e.SaleDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.Property(e => e.Notes).HasColumnType("TEXT");
+                entity.Property(e => e.SalesBookingStatusId);
+                entity.Property(e => e.BookingToken).HasMaxLength(200);
                 
                 // Note: User navigation properties will be added when needed
                 // entity.HasOne(e => e.Customer)
@@ -394,6 +399,46 @@ namespace TempleApi.Data
                 entity.HasOne(e => e.Event)
                     .WithMany()
                     .HasForeignKey(e => e.EventId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne<Product>()
+                    .WithMany()
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Booking configuration
+            modelBuilder.Entity<Booking>(entity =>
+            {
+                entity.Property(e => e.UserId).IsRequired();
+                entity.Property(e => e.StaffId).IsRequired();
+                entity.Property(e => e.BookingDate).HasDefaultValueSql("CURRENT_TIMESTAMP");
+                entity.Property(e => e.PaymentMethod).HasMaxLength(50);
+                entity.Property(e => e.Status).HasMaxLength(50);
+
+                entity.HasOne<Product>()
+                    .WithMany()
+                    .HasForeignKey(e => e.ProductId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne<Category>()
+                    .WithMany()
+                    .HasForeignKey(e => e.CategoryId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.StaffId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne<User>()
+                    .WithMany()
+                    .HasForeignKey(e => e.ApprovedBy)
                     .OnDelete(DeleteBehavior.SetNull);
             });
 

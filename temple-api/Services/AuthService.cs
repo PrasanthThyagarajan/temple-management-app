@@ -183,7 +183,7 @@ namespace TempleApi.Services
                     await _context.SaveChangesAsync();
                 }
 
-                // Send verification email
+                // Send verification email (common verify URL convention)
                 try
                 {
                     var baseUrl = _configuration["App:BaseUrl"] ?? string.Empty;

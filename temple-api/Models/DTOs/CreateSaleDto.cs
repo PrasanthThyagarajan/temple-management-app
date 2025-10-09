@@ -4,12 +4,15 @@ namespace TempleApi.Models.DTOs
     {
         public int UserId { get; set; } // Customer
         public int StaffId { get; set; } // Staff who processes the sale
+        public int? ProductId { get; set; }
         public DateTime SaleDate { get; set; } = DateTime.UtcNow;
         public decimal TotalAmount { get; set; }
         public decimal DiscountAmount { get; set; }
         public decimal FinalAmount { get; set; }
         public string PaymentMethod { get; set; } = "Cash";
         public string Status { get; set; } = "Completed";
+        public int? SalesBookingStatusId { get; set; }
+        public string? BookingToken { get; set; }
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerPhone { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;

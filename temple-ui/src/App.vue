@@ -118,22 +118,26 @@
             </el-sub-menu>
 
             <!-- Shop (moved to main header, as submenu group) -->
-            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/products') || isMenuVisible('/categories') || isMenuVisible('/sales'))" index="main-shop">
+            <el-sub-menu v-if="isAuthenticated && (isMenuVisible('/products') || isMenuVisible('/categories') || isMenuVisible('/bookings') || isMenuVisible('/sales'))" index="main-shop">
               <template #title>
                 <el-icon><Shop /></el-icon>
                 <span>Shop</span>
               </template>
-              <el-menu-item v-if="isMenuVisible('/products')" index="/products">
-                <el-icon><Box /></el-icon>
-                <span>Products</span>
+              <el-menu-item v-if="isMenuVisible('/bookings')" index="/bookings">
+                <el-icon><ShoppingCart /></el-icon>
+                <span>Booking</span>
+              </el-menu-item>
+              <el-menu-item v-if="isMenuVisible('/sales')" index="/sales">
+                <el-icon><ShoppingCart /></el-icon>
+                <span>Sales</span>
               </el-menu-item>
               <el-menu-item v-if="isMenuVisible('/categories')" index="/categories">
                 <el-icon><Collection /></el-icon>
                 <span>Categories</span>
               </el-menu-item>
-              <el-menu-item v-if="isMenuVisible('/sales')" index="/sales">
-                <el-icon><ShoppingCart /></el-icon>
-                <span>Sales</span>
+              <el-menu-item v-if="isMenuVisible('/products')" index="/products">
+                <el-icon><Box /></el-icon>
+                <span>Products</span>
               </el-menu-item>
             </el-sub-menu>
           </el-menu>
@@ -285,6 +289,7 @@ const menuPermissions = ref({
   '/contribution-settings': false,
   '/products': false,
   '/categories': false,
+  '/bookings': false,
   '/sales': false
 })
 

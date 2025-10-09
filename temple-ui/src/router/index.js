@@ -15,6 +15,7 @@ import Products from '../views/Products.vue';
 import Areas from '../views/Areas.vue';
 import Categories from '../views/Categories.vue';
 import Sales from '../views/Sales.vue';
+import Booking from '../views/Booking.vue';
 import EventExpenses from '../views/EventExpenses.vue';
 import EventExpenseItems from '../views/EventExpenseItems.vue';
 import EventExpenseServices from '../views/EventExpenseServices.vue';
@@ -81,6 +82,11 @@ const routes = [
     path: '/categories',
     name: 'Categories',
     component: Categories
+  },
+  {
+    path: '/bookings',
+    name: 'Booking',
+    component: Booking
   },
   {
     path: '/sales',

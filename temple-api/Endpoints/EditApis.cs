@@ -365,6 +365,41 @@ public static class EditApis
 
         #endregion
 
+        #region Booking Edit Endpoints
+
+        app.MapPut("/api/bookings/{id}/approve", async (HttpContext http, int id, int approvedBy, IBookingService bookingService) =>
+        {
+            try
+            {
+                // Enforce: Only users with Update permission on /bookings OR BookingApproval special page can approve
+                // Permission middleware already guards methods by EndpointPermissions config (PUT => Update for /api/bookings)
+                // For explicit check of special page permission (BookingApproval), we can optionally read claims here if needed.
+                var ok = await bookingService.ApproveAsync(id, approvedBy);
+                return ok ? Results.Ok(new { message = "Approved" }) : Results.NotFound();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error approving booking {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        app.MapPut("/api/bookings/{id}/reject", async (int id, int approvedBy, IBookingService bookingService) =>
+        {
+            try
+            {
+                var ok = await bookingService.RejectAsync(id, approvedBy);
+                return ok ? Results.Ok(new { message = "Rejected" }) : Results.NotFound();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error rejecting booking {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        #endregion
+
         #region Pooja Management Edit Endpoints
 
         app.MapPut("/api/poojas/{id}", async (int id, CreatePoojaDto updateDto, IPoojaService poojaService) =>

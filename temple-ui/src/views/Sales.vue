@@ -62,6 +62,45 @@
       <!-- Enhanced Search and Filters -->
       <div class="search-filters">
         <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="Category" prop="categoryId">
+              <el-select v-model="saleForm.categoryId" placeholder="Select category" style="width: 100%" clearable @change="handleCategoryChange">
+                <el-option
+                  v-for="category in categories"
+                  :key="category.id"
+                  :label="category.name"
+                  :value="category.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="Product" prop="productId">
+              <el-select v-model="saleForm.productId" placeholder="Select product" style="width: 100%" :disabled="!saleForm.categoryId" clearable>
+                <el-option
+                  v-for="product in productsBySelectedCategory"
+                  :key="product.id"
+                  :label="product.name"
+                  :value="product.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="Booking Status" prop="salesBookingStatusId">
+              <el-select v-model="saleForm.salesBookingStatusId" placeholder="Select status" style="width: 100%">
+                <el-option label="NoBooking" :value="1" />
+                <el-option label="InProgress" :value="2" />
+                <el-option label="Approved" :value="3" />
+                <el-option label="Failed" :value="4" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
           <el-col :xs="24" :sm="12" :md="6" :lg="6" :xl="6">
             <el-input
               v-model="searchTerm"
@@ -137,6 +176,24 @@
           @sort-change="handleTableSortChange"
         >
         <el-table-column 
+          prop="productId" 
+          label="Product" 
+          min-width="150"
+        >
+          <template #default="scope">
+            {{ getProductName(scope.row.productId) }}
+          </template>
+        </el-table-column>
+        <el-table-column 
+          prop="categoryName" 
+          label="Category" 
+          min-width="140"
+        >
+          <template #default="scope">
+            {{ getProductCategory(scope.row.productId) }}
+          </template>
+        </el-table-column>
+        <el-table-column 
           prop="saleDate" 
           label="Sale Date" 
           width="120"
@@ -176,6 +233,17 @@
         >
           <template #default="scope">
             ₹{{ scope.row.finalAmount.toLocaleString() }}
+          </template>
+        </el-table-column>
+        <el-table-column 
+          prop="salesBookingStatusId" 
+          label="Booking Status" 
+          width="140"
+        >
+          <template #default="scope">
+            <el-tag :type="getBookingStatusTag(scope.row.salesBookingStatusId)">
+              {{ getBookingStatusText(scope.row.salesBookingStatusId) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="paymentMethod" label="Payment" width="100" />
@@ -434,6 +502,12 @@
     >
       <div v-if="selectedSale" class="sale-details">
         <el-descriptions :column="2" border>
+          <el-descriptions-item label="Product">
+            {{ getProductName(selectedSale.productId) }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Category">
+            {{ getProductCategory(selectedSale.productId) }}
+          </el-descriptions-item>
           <el-descriptions-item label="Sale Date">
             {{ formatDate(selectedSale.saleDate) }}
           </el-descriptions-item>
@@ -448,6 +522,9 @@
           </el-descriptions-item>
           <el-descriptions-item label="Final Amount">
             ₹{{ selectedSale.finalAmount.toLocaleString() }}
+          </el-descriptions-item>
+          <el-descriptions-item label="Booking Status">
+            {{ getBookingStatusText(selectedSale.salesBookingStatusId) }}
           </el-descriptions-item>
           <el-descriptions-item label="Notes" :span="2">
             {{ selectedSale.notes || 'No notes available' }}
@@ -490,6 +567,7 @@ const canDelete = ref(false)
 // Reactive data
 const sales = ref([])
 const products = ref([])
+const categories = ref([])
 const loading = ref(false)
 const saving = ref(false)
 const searchTerm = ref('')
@@ -539,6 +617,9 @@ const saleForm = reactive({
   finalAmount: 0,
   notes: '',
   eventId: null,
+  categoryId: null,
+  productId: null,
+  salesBookingStatusId: 1,
   saleItems: [
     {
       productId: '',
@@ -562,6 +643,36 @@ const saleFormRef = ref()
 
 // API base URL
 const API_BASE = '/api'
+const productsBySelectedCategory = computed(() => {
+  if (!saleForm.categoryId) return []
+  // Sales page: exclude prebooking-only products
+  return products.value
+    .filter(p => (p.categoryId === saleForm.categoryId || p.categoryNavigation?.id === saleForm.categoryId))
+    .filter(p => !p.isPreBookingAvailable)
+})
+
+const getProductName = (productId) => {
+  if (!productId) return '—'
+  const p = products.value.find(x => x.id === productId)
+  return p?.name || '—'
+}
+
+const getProductCategory = (productId) => {
+  if (!productId) return '—'
+  const p = products.value.find(x => x.id === productId)
+  return p?.categoryNavigation?.name || p?.category || '—'
+}
+
+const getBookingStatusText = (id) => {
+  const map = { 1: 'NoBooking', 2: 'InProgress', 3: 'EmailFailed', 4: 'Awaiting', 5: 'Success', 6: 'Failed' }
+  return map[id] || '—'
+}
+
+const getBookingStatusTag = (id) => {
+  const map = { 5: 'success', 2: 'warning', 4: 'info', 3: 'danger', 6: 'danger', 1: '' }
+  return map[id] || ''
+}
+
 
 // Summary Statistics
 const summaryStats = computed(() => {
@@ -650,7 +761,12 @@ const loadSales = async () => {
   try {
     loading.value = true
     const response = await axios.get(`${API_BASE}/sales`)
-    sales.value = response.data
+    // Sales page: show only non-prebooking or completed sales
+    const all = response.data
+    sales.value = all.filter(s => {
+      const p = products.value.find(pp => pp.id === s.productId)
+      return !p?.isPreBookingAvailable
+    })
   } catch (error) {
     console.error('Error loading sales:', error)
     ElMessage.error('Failed to load sales')
@@ -665,6 +781,15 @@ const loadProducts = async () => {
     products.value = response.data
   } catch (error) {
     console.error('Error loading products:', error)
+  }
+}
+
+const loadCategories = async () => {
+  try {
+    const response = await axios.get(`${API_BASE}/categories/active`)
+    categories.value = response.data
+  } catch (error) {
+    console.error('Error loading categories:', error)
   }
 }
 
@@ -729,6 +854,10 @@ const updateItemDetails = (index) => {
     saleForm.saleItems[index].unitPrice = product.price
     calculateItemTotal(index)
   }
+}
+
+const handleCategoryChange = () => {
+  saleForm.productId = null
 }
 
 const calculateItemTotal = (index) => {
@@ -839,6 +968,9 @@ const resetForm = () => {
     finalAmount: 0,
     notes: '',
     eventId: null,
+    categoryId: null,
+    productId: null,
+    salesBookingStatusId: 1,
     saleItems: [
       {
         productId: '',
@@ -884,6 +1016,7 @@ const handleResize = () => {
 onMounted(async () => {
   loadSales()
   loadProducts()
+  loadCategories()
   loadEvents()
   window.addEventListener('resize', handleResize)
   

@@ -87,6 +87,7 @@ namespace TempleApi.Services
                 new { Name = "Categories", Url = "/categories" },
                 new { Name = "Products", Url = "/products" },
                 new { Name = "Sales", Url = "/sales" },
+                new { Name = "Bookings", Url = "/bookings" },
                 new { Name = "Inventory", Url = "/inventories" },
 
                 // Event Expense Management
@@ -105,7 +106,11 @@ namespace TempleApi.Services
 
                 // Additional Routes
                 new { Name = "Verify", Url = "/verify" },
-                new { Name = "ApiTest", Url = "/api-test" }
+                new { Name = "ApiTest", Url = "/api-test" },
+
+                // Special Approval Permissions (not actual pages, but permission flags)
+                new { Name = "ExpenseApproval", Url = "/expense-approval" },
+                new { Name = "BookingApproval", Url = "/booking-approval" }
             };
 
             var desiredUrls = pages.Select(p => p.Url).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -207,7 +212,7 @@ namespace TempleApi.Services
             // General gets specific permissions for specific pages
             var generalReadTargets = new HashSet<string>(new[]
             {
-                "Home","Dashboard","Devotees","Donations","Events","Temples","Areas","Categories","Products","Sales","EventExpenses","EventExpenseItems","EventExpenseServices"
+                "Home","Dashboard","Devotees","Donations","Events","Temples","Areas","Categories","Products","Sales","Bookings","EventExpenses","EventExpenseItems","EventExpenseServices"
             });
 
             var generalCreateTargets = new HashSet<string>(new[]

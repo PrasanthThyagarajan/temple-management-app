@@ -128,11 +128,11 @@ public static class ReadApis
             }
         }).RequireAuthorization();
 
-        app.MapGet("/api/auth/verify", async (string code, IAuthService authService, ILogger<Program> logger) =>
+        app.MapGet("/api/auth/verify", async (string code, IVerificationService verificationService, ILogger<Program> logger) =>
         {
             try
             {
-                var ok = await authService.VerifyAsync(code);
+                var ok = await verificationService.VerifyUserAsync(code);
                 if (!ok) return Results.BadRequest("Invalid or expired verification code");
                 return Results.Ok(new { message = "Account verified successfully" });
             }
@@ -935,6 +935,40 @@ public static class ReadApis
             catch (Exception ex)
             {
                 Log.Error(ex, "Error searching sales with term {SearchTerm}", searchTerm);
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        // Sale booking verification removed as per plan
+
+        #endregion
+
+        #region Booking Read Endpoints
+
+        app.MapGet("/api/bookings", async (IBookingService bookingService) =>
+        {
+            try
+            {
+                var list = await bookingService.GetAllAsync();
+                return Results.Ok(list);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting all bookings");
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        app.MapGet("/api/bookings/{id}", async (int id, IBookingService bookingService) =>
+        {
+            try
+            {
+                var item = await bookingService.GetByIdAsync(id);
+                return item != null ? Results.Ok(item) : Results.NotFound();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error getting booking {Id}", id);
                 return Results.Problem("Internal server error");
             }
         });

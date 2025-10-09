@@ -43,6 +43,7 @@ namespace TempleApi.Tests
                 StockQuantity = 100,
                 MinStockLevel = 10,
                 Price = 25.50m,
+                IsPreBookingAvailable = true,
                 Status = "Active",
                 Description = "Test Description",
                 Notes = "Test Notes"
@@ -57,6 +58,7 @@ namespace TempleApi.Tests
             result.Category.Should().Be(createProductDto.Category);
             result.StockQuantity.Should().Be(createProductDto.StockQuantity);
             result.Price.Should().Be(createProductDto.Price);
+            result.IsPreBookingAvailable.Should().BeTrue();
             result.Status.Should().Be("Active");
             result.Id.Should().BeGreaterThan(0);
         }
@@ -82,6 +84,7 @@ namespace TempleApi.Tests
             // Assert
             result.Should().NotBeNull();
             result.Status.Should().Be("Inactive");
+            result.IsPreBookingAvailable.Should().BeFalse();
         }
 
         #endregion
@@ -101,7 +104,8 @@ namespace TempleApi.Tests
                 Price = 15.75m,
                 Description = "Test Description",
                 Notes = "Test Notes",
-                IsActive = true
+                IsActive = true,
+                IsPreBookingAvailable = true
             };
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
@@ -115,6 +119,7 @@ namespace TempleApi.Tests
             result!.Category.Should().Be(product.Category);
             result!.StockQuantity.Should().Be(product.Quantity);
             result!.Price.Should().Be(product.Price);
+            result!.IsPreBookingAvailable.Should().BeTrue();
             result!.Status.Should().Be("Active");
         }
 
@@ -236,6 +241,7 @@ namespace TempleApi.Tests
                 StockQuantity = 150,
                 MinStockLevel = 15,
                 Price = 30.00m,
+                IsPreBookingAvailable = true,
                 Status = "Active",
                 Description = "Updated Description",
                 Notes = "Updated Notes"
@@ -251,6 +257,7 @@ namespace TempleApi.Tests
             result.Price.Should().Be(updateDto.Price);
             result.Description.Should().Be(updateDto.Description);
             result.Notes.Should().Be(updateDto.Notes);
+            result.IsPreBookingAvailable.Should().BeTrue();
         }
 
         [Fact]

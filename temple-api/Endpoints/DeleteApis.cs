@@ -198,6 +198,24 @@ public static class DeleteApis
 
         #endregion
 
+        #region Booking Delete Endpoints
+
+        app.MapDelete("/api/bookings/{id}", async (int id, IBookingService bookingService) =>
+        {
+            try
+            {
+                var ok = await bookingService.DeleteAsync(id);
+                return ok ? Results.NoContent() : Results.NotFound();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error deleting booking with id {Id}", id);
+                return Results.Problem("Internal server error");
+            }
+        });
+
+        #endregion
+
         #region Pooja Management Delete Endpoints
 
         app.MapDelete("/api/poojas/{id}", async (int id, IPoojaService poojaService) =>

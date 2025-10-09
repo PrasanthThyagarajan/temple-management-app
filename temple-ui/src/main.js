@@ -87,6 +87,28 @@ const loadUserData = () => {
   }
 }
 
+// Refresh permissions from server without requiring full logout/login
+const refreshPermissionsFromServer = async () => {
+  if (!currentBasic) return false
+  try {
+    // Fetch role-permissions for current user; backend scopes to user's roles
+    const response = await axios.get('/api/admin/role-permissions')
+    const rolePermissions = Array.isArray(response.data) ? response.data : []
+    // Derive distinct PageName list (e.g., "BookingApproval", "Vouchers", etc.)
+    const pageNames = [...new Set(rolePermissions.map(rp => rp.pageName).filter(Boolean))]
+    if (pageNames.length > 0) {
+      currentPermissions = pageNames
+      localStorage.setItem('permissions', JSON.stringify(currentPermissions))
+      // Cache the full role-permissions for page-level checks
+      window.rolePermissionsCache = rolePermissions
+      return true
+    }
+  } catch (error) {
+    console.error('Failed to refresh permissions from server:', error)
+  }
+  return false
+}
+
 // Verify user credentials function
 const verifyUserCredentials = async () => {
   if (!currentBasic) {
@@ -315,6 +337,10 @@ const initApp = async () => {
     
     // Load existing user data
     loadUserData()
+    // Attempt to refresh permissions proactively so newly seeded permissions (e.g., BookingApproval) are available without logout/login
+    if (currentBasic) {
+      await refreshPermissionsFromServer()
+    }
     
     // Create Vue app
     const app = createApp(App)
@@ -422,6 +448,8 @@ const initApp = async () => {
     return false
   },
   logout,
+  // Expose refresh so views can trigger a manual permissions refresh on demand
+  refreshPermissions: refreshPermissionsFromServer,
   
   // Register function for components to use
   register: async (fullName, email, password, nakshatra, dateOfBirth, gender) => {

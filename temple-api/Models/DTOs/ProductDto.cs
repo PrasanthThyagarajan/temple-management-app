@@ -11,6 +11,7 @@ namespace TempleApi.Models.DTOs
         public int StockQuantity { get; set; }
         public int MinStockLevel { get; set; }
         public decimal Price { get; set; }
+        public bool IsPreBookingAvailable { get; set; }
         public string Status { get; set; } = "Active";
         public string Description { get; set; } = string.Empty;
         public string Notes { get; set; } = string.Empty;

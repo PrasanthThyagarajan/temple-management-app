@@ -12,19 +12,25 @@ namespace TempleApi.Services
         private readonly IProductRepository _productRepository;
         private readonly IRepository<SaleItem> _saleItemRepository;
         private readonly IProductService _productService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<SaleService> _logger;
 
         public SaleService(
             ISaleRepository saleRepository,
             IUserRepository userRepository,
             IProductRepository productRepository,
             IRepository<SaleItem> saleItemRepository,
-            IProductService productService)
+            IProductService productService,
+            IConfiguration configuration,
+            ILogger<SaleService> logger)
         {
             _saleRepository = saleRepository;
             _userRepository = userRepository;
             _productRepository = productRepository;
             _saleItemRepository = saleItemRepository;
             _productService = productService;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<SaleDto> CreateSaleAsync(CreateSaleDto createSaleDto)
@@ -58,12 +64,15 @@ namespace TempleApi.Services
             {
                 UserId = createSaleDto.UserId,
                 StaffId = createSaleDto.StaffId,
+                ProductId = createSaleDto.ProductId,
                 SaleDate = createSaleDto.SaleDate,
                 TotalAmount = createSaleDto.TotalAmount,
                 DiscountAmount = createSaleDto.DiscountAmount,
                 FinalAmount = createSaleDto.FinalAmount,
                 PaymentMethod = createSaleDto.PaymentMethod,
                 IsActive = createSaleDto.Status == "Completed",
+                SalesBookingStatusId = createSaleDto.SalesBookingStatusId,
+                BookingToken = createSaleDto.BookingToken,
                 Notes = createSaleDto.Notes,
                 EventId = createSaleDto.EventId,
             };
@@ -157,12 +166,15 @@ namespace TempleApi.Services
             // Update sale properties
             sale.UserId = updateSaleDto.UserId;
             sale.StaffId = updateSaleDto.StaffId;
+            sale.ProductId = updateSaleDto.ProductId;
             sale.SaleDate = updateSaleDto.SaleDate;
             sale.TotalAmount = updateSaleDto.TotalAmount;
             sale.DiscountAmount = updateSaleDto.DiscountAmount;
             sale.FinalAmount = updateSaleDto.FinalAmount;
             sale.PaymentMethod = updateSaleDto.PaymentMethod;
             sale.IsActive = updateSaleDto.Status == "Completed";
+            sale.SalesBookingStatusId = updateSaleDto.SalesBookingStatusId;
+            sale.BookingToken = updateSaleDto.BookingToken;
             sale.Notes = updateSaleDto.Notes;
 
             await _saleRepository.UpdateAsync(sale);
@@ -182,6 +194,8 @@ namespace TempleApi.Services
             await _saleRepository.UpdateAsync(sale);
             return true;
         }
+
+        // Sale booking verification removed as per new plan
 
         public async Task<bool> DeleteSaleAsync(int id)
         {
@@ -214,12 +228,14 @@ namespace TempleApi.Services
                 Id = sale.Id,
                 UserId = sale.UserId,
                 StaffId = sale.StaffId,
+                ProductId = sale.ProductId,
                 SaleDate = sale.SaleDate,
                 TotalAmount = sale.TotalAmount,
                 DiscountAmount = sale.DiscountAmount,
                 FinalAmount = sale.FinalAmount,
                 PaymentMethod = sale.PaymentMethod,
                 Status = sale.IsActive ? "Completed" : "Pending",
+                SalesBookingStatusId = sale.SalesBookingStatusId,
                 CustomerName = sale.Customer?.FullName ?? string.Empty,
                 CustomerPhone = sale.Customer?.Email ?? string.Empty, // Using email as contact
                 StaffName = sale.Staff?.FullName ?? string.Empty,

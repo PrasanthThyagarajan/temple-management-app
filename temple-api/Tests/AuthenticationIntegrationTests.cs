@@ -495,5 +495,37 @@ namespace TempleApi.Tests
             var response = await client.PutAsJsonAsync("/api/users/me", update);
             response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
+
+        [Fact]
+        public async Task Bookings_Get_ShouldRequireReadPermission()
+        {
+            var client = WithTestDatabase().CreateClient();
+
+            // No auth => 401
+            var unauth = await client.GetAsync("/api/bookings");
+            unauth.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+            // With Basic auth => OK or Forbidden depending on seeded permissions
+            var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes("testuser@example.com:password123"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            var resp = await client.GetAsync("/api/bookings");
+            resp.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.Forbidden);
+        }
+
+        [Fact]
+        public async Task Bookings_Approve_ShouldRequireUpdatePermission()
+        {
+            var client = WithTestDatabase().CreateClient();
+
+            // No auth => 401
+            var unauth = await client.PutAsync("/api/bookings/1/approve?approvedBy=1", null);
+            unauth.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+            // With Basic auth => should be Forbidden without Update
+            var credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes("testuser@example.com:password123"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            var resp = await client.PutAsync("/api/bookings/1/approve?approvedBy=1", null);
+            resp.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        }
     }
 }

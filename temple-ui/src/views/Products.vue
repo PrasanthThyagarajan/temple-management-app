@@ -306,7 +306,14 @@
               />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :xs="24" :sm="12" :md="12" :lg="12">
+            <el-form-item label="IsBookingAvailable">
+              <el-switch
+                v-model="productForm.isPreBookingAvailable"
+                active-text="Yes"
+                inactive-text="No"
+              />
+            </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="Description" prop="description">
@@ -410,12 +417,12 @@ const productForm = reactive({
   name: '',
   category: '',
   categoryId: null,
-
   price: 0,
   stockQuantity: 0,
   minStockLevel: 0,
   description: '',
-  notes: ''
+  notes: '',
+  isPreBookingAvailable: false
 })
 
 // Form validation rules
@@ -574,7 +581,8 @@ const editProduct = (product) => {
     stockQuantity: product.stockQuantity,
     minStockLevel: product.minStockLevel,
     description: product.description,
-    notes: product.notes
+    notes: product.notes,
+    isPreBookingAvailable: product.isPreBookingAvailable || false
   })
   showCreateDialog.value = true
 }
@@ -664,7 +672,8 @@ const resetForm = () => {
     stockQuantity: 0,
     minStockLevel: 0,
     description: '',
-    notes: ''
+    notes: '',
+    isPreBookingAvailable: false
   })
   productFormRef.value?.resetFields()
 }

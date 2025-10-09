@@ -24,6 +24,7 @@ namespace TempleApi.Services
                 Quantity = createProductDto.StockQuantity,
                 MinStockLevel = createProductDto.MinStockLevel,
                 Price = createProductDto.Price,
+                IsPreBookingAvailable = createProductDto.IsPreBookingAvailable,
                 IsActive = createProductDto.Status == "Active",
                 Description = createProductDto.Description,
                 Notes = createProductDto.Notes
@@ -69,6 +70,7 @@ namespace TempleApi.Services
             product.Quantity = updateProductDto.StockQuantity;
             product.MinStockLevel = updateProductDto.MinStockLevel;
             product.Price = updateProductDto.Price;
+            product.IsPreBookingAvailable = updateProductDto.IsPreBookingAvailable;
             product.IsActive = updateProductDto.Status == "Active";
             product.Description = updateProductDto.Description;
             product.Notes = updateProductDto.Notes;
@@ -146,6 +148,7 @@ namespace TempleApi.Services
                 StockQuantity = product.Quantity,
                 MinStockLevel = product.MinStockLevel,
                 Price = product.Price,
+                IsPreBookingAvailable = product.IsPreBookingAvailable,
                 Status = product.IsActive ? "Active" : "Inactive",
                 Description = product.Description,
                 Notes = product.Notes,

@@ -163,6 +163,9 @@ builder.Services.AddScoped<IContributionSettingRepository, ContributionSettingRe
 builder.Services.AddScoped<IContributionSettingService, ContributionSettingService>();
 builder.Services.AddScoped<IContributionRepository, ContributionRepository>();
 builder.Services.AddScoped<IContributionService, ContributionService>();
+builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IVerificationService, VerificationService>();
 
 // Register Inventory services
 builder.Services.AddScoped<IInventoryService, InventoryService>();
